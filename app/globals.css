@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 158 100% 28%; /* CFE Green */
+    --primary-foreground: 0 0% 100%; /* White */
+    --primary-hover: 158 100% 20%; /* Darker CFE Green for hover */
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84% 60%; /* Red */
+    --destructive-foreground: 0 0% 100%; /* White */
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 158 100% 28%; /* CFE Green for focus rings */
+    --radius: 0.5rem;
+
+    /* CFE Semantic Colors (already defined in tailwind.config.ts, but keeping here for consistency if needed) */
+    --cfe-green: 158 100% 28%;
+    --cfe-green-foreground: 0 0% 100%;
+    --status-available: 158 100% 28%;
+    --status-available-foreground: 0 0% 100%;
+    --status-lent: 43 96% 56%;
+    --status-lent-foreground: 20 14.3% 4.1%;
+    --status-assigned: 231 81% 69%;
+    --status-assigned-foreground: 0 0% 100%;
+    --status-maintenance: 213 94% 68%;
+    --status-maintenance-foreground: 0 0% 100%;
+    --status-pending-retire: 24 95% 53%;
+    --status-pending-retire-foreground: 0 0% 100%;
+    --status-retired: 0 84% 60%;
+    --status-retired-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 20 14.3% 4.1%;
+    --foreground: 60 9.1% 97.8%;
+    --card: 20 14.3% 4.1%;
+    --card-foreground: 60 9.1% 97.8%;
+    --popover: 20 14.3% 4.1%;
+    --popover-foreground: 60 9.1% 97.8%;
+    --primary: 158 100% 28%; /* CFE Green */
+    --primary-foreground: 0 0% 100%; /* White */
+    --primary-hover: 158 100% 20%; /* Darker CFE Green for hover */
+    --secondary: 12 6.5% 15.1%;
+    --secondary-foreground: 60 9.1% 97.8%;
+    --muted: 12 6.5% 15.1%;
+    --muted-foreground: 24 5.4% 63.9%;
+    --accent: 12 6.5% 15.1%;
+    --accent-foreground: 60 9.1% 97.8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 12 6.5% 15.1%;
+    --input: 12 6.5% 15.1%;
+    --ring: 158 100% 28%; /* CFE Green for focus rings */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom CFE styles */
+.cfe-border-left {
+  border-left: 4px solid;
+}
+
+.cfe-border-left-red {
+  border-left-color: hsl(var(--status-retired));
+}
+
+.cfe-border-left-yellow {
+  border-left-color: hsl(var(--status-lent));
+}
+
+.cfe-border-left-green {
+  border-left-color: hsl(var(--status-available));
+}
+
+.cfe-border-left-blue {
+  border-left-color: hsl(var(--status-maintenance));
+}
+
+/* Quantity display styles */
+.qty-total {
+  @apply text-muted-foreground text-lg font-bold;
+}
+
+.qty-available {
+  @apply text-lg font-bold;
+  color: hsl(var(--cfe-green));
+}
+
+.qty-unavailable {
+  @apply text-lg font-bold;
+  color: hsl(var(--status-retired));
+}
+
+/* Status-based text colors */
+.text-status-disponible {
+  color: hsl(var(--status-available));
+}
+
+.text-status-prestado {
+  color: hsl(var(--status-lent));
+}
+
+.text-status-asignado {
+  color: hsl(var(--status-assigned));
+}
+
+.text-status-mantenimiento {
+  color: hsl(var(--status-maintenance));
+}
+
+.text-status-pendiente-de-retiro {
+  color: hsl(var(--status-pending-retire));
+}
+
+.text-status-retirado {
+  color: hsl(var(--status-retired));
+}
+
+/* CFE specific text colors */
+.text-cfe-green {
+  color: #008e5a;
+}
+
+.text-cfe-text-on-green {
+  color: #ffffff;
+}
+
+.bg-cfe-green {
+  background-color: #008e5a;
+}
+
+.bg-cfe-green-very-light {
+  background-color: #e6f4ef;
+}
+
+.border-cfe-green\/30 {
+  border-color: rgba(0, 142, 90, 0.3);
+}

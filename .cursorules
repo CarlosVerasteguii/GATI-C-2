@@ -1,0 +1,38 @@
+## GATI-C Project Rules (v1.0)
+# This file defines the core principles and coding standards for the GATI-C project.
+# Adherence to these rules is mandatory for all code generation and modification.
+
+# --- General Principles ---
+- **Clarity and Readability:** Code must be self-documenting where possible. Use clear, descriptive names for variables, functions, and components. Prioritize simplicity over cleverness.
+- **Modularity:** Enforce strict module separation in the backend. Communication between modules MUST use the internal Event Bus, direct imports are forbidden. Components in the frontend should be small and single-purpose.
+- **Transparency and Auditing:** Every action that mutates data MUST be logged. Assume every operation needs a clear audit trail.
+- **User-Centric Design:** All UI components must be implemented with a focus on a fluid, modern, and professional user experience, following the CFE Visual Style Guide.
+
+# --- Frontend (React/Next.js/TypeScript) ---
+- **Component Naming:** Use PascalCase for all React components (e.g., `ProductTable.tsx`).
+- **File Structure:** Group related components, hooks, and types within feature-specific directories (e.g., `app/inventario/components/`).
+- **State Management:** Use Zustand for global state. For local component state, use React's `useState` and `useReducer` hooks.
+- **Styling:** Use Tailwind CSS utility classes exclusively. Avoid custom CSS files unless absolutely necessary for complex animations.
+- **Documentation:** All components must have JSDoc comments explaining their purpose, props, and usage. Example:
+  /**
+   * Renders a specialized badge for displaying product status.
+   * @param {object} props - The component props.
+   * @param {string} props.status - The status to display (e.g., 'Disponible', 'Prestado').
+   * @returns {JSX.Element} The status badge component.
+   */
+- **Accessibility (WCAG 2.1 AA):** All components must be keyboard-navigable. All interactive, non-text elements (like icon buttons) MUST have an `aria-label`. Ensure sufficient color contrast.
+
+# --- Backend (Node.js/Express/TypeScript) ---
+- **API Versioning:** All API routes must be prefixed with `/api/v1/`.
+- **Input Validation:** Every API endpoint that receives data (POST, PUT, PATCH) MUST validate the incoming body/params/query using a Zod schema before processing. Reject invalid data with a `400 Bad Request` status and a clear error message.
+- **Error Handling:** Implement a global error-handling middleware in Express. All errors should be caught and formatted into a standard JSON response: `{ success: false, error: { code: 'ERROR_CODE', message: '...' } }`. Never leak raw database or system errors to the client.
+- **Services Layer:** Abstract all business logic into a "services" layer. Controllers in Express should only handle HTTP request/response logic and call services to do the actual work.
+- **ORM Usage:** All database interactions must go through the Prisma ORM. Raw SQL queries are only permitted for read-only reporting endpoints with a documented performance justification.
+
+# --- Git & Version Control ---
+- **Commit Messages:** Follow the Conventional Commits specification. Examples:
+  - `feat(inventory): Implement advanced QTY display`
+  - `fix(auth): Correct UI blocking bug on quick actions modal`
+  - `docs(srs): Update database design section`
+  - `refactor(ui): Improve modal layouts for better responsiveness`
+- **Changelog:** After every significant feature implementation or bug fix, update the `CHANGELOG.md` file following its established format. 
