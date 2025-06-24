@@ -279,6 +279,38 @@ Se añadieron verificaciones para evitar errores cuando selectedProduct es null,
 
 Se implementó correctamente la acción ADD_PENDING_REQUEST en el contexto de la aplicación y se corrigió el uso de esta acción en el componente de inventario.
 
+### 2.5. Validación de Formularios en Edición de Productos
+
+Se corrigió un problema crítico en la validación de formularios al editar productos. Anteriormente, cuando se editaba un producto desde una pestaña diferente a la de información básica (como la pestaña de detalles técnicos), el sistema ignoraba la validación de los campos obligatorios en la primera pestaña, lo que resultaba en productos con campos vacíos.
+
+Los cambios implementados incluyen:
+
+1. **Validación independiente de la pestaña activa**: Ahora se verifican todos los campos obligatorios sin importar en qué pestaña se encuentre el usuario.
+
+```jsx
+// Verificar campos obligatorios independientemente de la pestaña activa
+const nombre = formData.get("nombre") as string || selectedProduct?.nombre
+const marca = tempMarca || selectedProduct?.marca
+const modelo = formData.get("modelo") as string || selectedProduct?.modelo
+const categoria = formData.get("categoria") as string || selectedProduct?.categoria
+
+if (!nombre || !marca || !modelo || !categoria) {
+  toast({
+    title: "Campos requeridos",
+    description: "Por favor, completa todos los campos obligatorios (Nombre, Marca, Modelo y Categoría).",
+    variant: "destructive",
+  })
+  setIsLoading(false)
+  // Cambiar a la pestaña básica si hay campos faltantes
+  setActiveFormTab("basic")
+  return
+}
+```
+
+2. **Cambio automático a la pestaña correcta**: Si faltan campos obligatorios, el sistema cambia automáticamente a la pestaña de información básica para que el usuario pueda completarlos.
+
+3. **Mensajes de error específicos**: Se mejoró la información de los mensajes de error para indicar exactamente qué campos faltan por completar.
+
 ## 3. Mejoras en el Componente EditProductModal
 
 ### 3.1. Formulario Organizado por Pestañas
@@ -314,4 +346,4 @@ Aunque se han implementado importantes mejoras, todavía hay áreas que pueden s
 
 Las mejoras implementadas han resuelto los problemas más críticos del módulo de inventario, mejorando significativamente la experiencia del usuario y la funcionalidad. La organización por pestañas facilita la gestión de productos con muchos campos, mientras que la vista alternativa de tarjetas proporciona una forma más visual de explorar el inventario.
 
-Se han corregido errores importantes que afectaban la funcionalidad básica, como el manejo de campos null/undefined y la implementación correcta de las acciones del contexto. Estas correcciones aseguran que el módulo funcione de manera estable y confiable. 
+Se han corregido errores importantes que afectaban la funcionalidad básica, como el manejo de campos null/undefined, la implementación correcta de las acciones del contexto, y la validación de formularios en la edición de productos. Estas correcciones aseguran que el módulo funcione de manera estable y confiable. 
