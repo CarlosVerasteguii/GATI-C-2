@@ -72,17 +72,17 @@ interface SolicitudAcceso {
 interface PendingActionRequest {
   id: number
   type:
-    | "Creación de Producto"
-    | "Edición de Producto"
-    | "Duplicación de Producto"
-    | "Asignación"
-    | "Préstamo"
-    | "Retiro de Producto"
-    | "Reactivación"
-    | "Edición Masiva"
-    | "Asignación Masiva"
-    | "Préstamo Masivo"
-    | "Retiro Masivo"
+  | "Creación de Producto"
+  | "Edición de Producto"
+  | "Duplicación de Producto"
+  | "Asignación"
+  | "Préstamo"
+  | "Retiro de Producto"
+  | "Reactivación"
+  | "Edición Masiva"
+  | "Asignación Masiva"
+  | "Préstamo Masivo"
+  | "Retiro Masivo"
   requestedBy: string
   date: string
   status: "Pendiente" | "Aprobada" | "Rechazada"
@@ -99,14 +99,14 @@ interface RecentActivity {
 interface PendingTask {
   id: number
   type:
-    | "CARGA"
-    | "RETIRO"
-    | "ASIGNACION"
-    | "PRESTAMO"
-    | "Reactivación"
-    | "Creación de Producto"
-    | "Edición de Producto"
-    | "Duplicación de Producto"
+  | "CARGA"
+  | "RETIRO"
+  | "ASIGNACION"
+  | "PRESTAMO"
+  | "Reactivación"
+  | "Creación de Producto"
+  | "Edición de Producto"
+  | "Duplicación de Producto"
   creationDate: string
   createdBy: string
   status: "Pendiente" | "Finalizada" | "Cancelada"
@@ -133,6 +133,7 @@ interface AppState {
   marcas: string[]
   retirementReasons: string[]
   userColumnPreferences: UserColumnPreference[]
+  userTheme?: string // Añadimos el tema del usuario al estado
 }
 
 // Datos de ejemplo
@@ -484,30 +485,45 @@ const defaultInitialState: AppState = {
   userColumnPreferences: [],
 }
 
+// Definición de tipos para las acciones
+type AppAction =
+  | { type: 'UPDATE_INVENTORY'; payload: InventoryItem[] }
+  | { type: 'UPDATE_INVENTORY_ITEM_STATUS'; payload: { id: number; status: string } }
+  | { type: 'ADD_RECENT_ACTIVITY'; payload: RecentActivity }
+  | { type: 'UPDATE_PENDING_TASK'; payload: { id: number; updates: Partial<PendingTask> } }
+  | { type: 'UPDATE_USER_COLUMN_PREFERENCES'; payload: { userId: number; pageId: string; columns: string[] } }
+  | { type: 'UPDATE_USER_THEME'; payload: string }
+  | { type: 'UPDATE_MARCAS'; payload: string[] }
+  | { type: 'ADD_PENDING_REQUEST'; payload: PendingActionRequest };
+
 interface AppContextType {
   state: AppState
+  dispatch: (action: AppAction) => void
   setUser: (user: User | null) => void
   updateInventory: (inventory: InventoryItem[]) => void
   addInventoryItem: (item: InventoryItem) => void
   updateInventoryItem: (id: number, updates: Partial<InventoryItem>) => void
+  updateInventoryItemStatus: (id: number, status: string) => void
   removeInventoryItem: (id: number) => void
-  updateAsignados: (asignados: AsignadoItem[]) => void // Re-added
+  updateAsignados: (asignados: AsignadoItem[]) => void
   addAssignment: (assignment: AsignadoItem) => void
   removeAssignment: (id: number) => void
   updateAssignmentStatus: (id: number, status: AsignadoItem["estado"]) => void
-  updatePrestamos: (prestamos: PrestamoItem[]) => void // Re-added
+  updatePrestamos: (prestamos: PrestamoItem[]) => void
   addLoan: (loan: PrestamoItem) => void
   removeLoan: (id: number) => void
   updateLoanStatus: (id: number, status: PrestamoItem["estado"]) => void
   updateSolicitudes: (solicitud: SolicitudAcceso[]) => void
   addSolicitudAcceso: (solicitud: SolicitudAcceso) => void
   updatePendingActionRequests: (requests: PendingActionRequest[]) => void
-  addPendingActionRequest: (request: PendingActionRequest) => void
+  addPendingRequest: (request: PendingActionRequest) => void
   addRecentActivity: (activity: RecentActivity) => void
   updateUserInUsersData: (userId: number, updates: Partial<User>) => void
   addPendingTask: (task: PendingTask) => void
   updatePendingTask: (taskId: number, updates: Partial<PendingTask>) => void
-  updateUserColumnPreferences: (page: string, preferences: { id: string; label: string; visible: boolean }[]) => void
+  updateUserColumnPreferences: (userId: number, pageId: string, columns: string[]) => void
+  updateUserTheme: (theme: string) => void
+  updateMarcas: (marcas: string[]) => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -618,7 +634,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setState((prevState) => ({ ...prevState, pendingActionRequests: requests }))
   }, [])
 
-  const addPendingActionRequest = useCallback((request: PendingActionRequest) => {
+  const addPendingRequest = useCallback((request: PendingActionRequest) => {
     setState((prevState) => ({ ...prevState, pendingActionRequests: [...prevState.pendingActionRequests, request] }))
   }, [])
 
@@ -648,45 +664,142 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   const updateUserColumnPreferences = useCallback(
-    (page: string, preferences: { id: string; label: string; visible: boolean }[]) => {
+    (userId: number, pageId: string, columns: string[]) => {
       setState((prevState) => ({
         ...prevState,
         userColumnPreferences: prevState.userColumnPreferences.map((pref) =>
-          pref.page === page ? { ...pref, preferences } : pref,
+          pref.page === pageId ? { ...pref, preferences: columns.map((column) => ({ id: column, label: column, visible: true })) } : pref,
         ),
       }))
     },
     [],
   )
 
+  const updateUserTheme = useCallback((theme: string) => {
+    setState((prevState) => ({
+      ...prevState,
+      userTheme: theme
+    }));
+  }, []);
+
+  const updateMarcas = useCallback((marcas: string[]) => {
+    setState((prevState) => ({
+      ...prevState,
+      marcas: marcas
+    }));
+  }, []);
+
+  const dispatch = useCallback((action: AppAction) => {
+    switch (action.type) {
+      case 'UPDATE_INVENTORY':
+        setState(prev => ({ ...prev, inventoryData: action.payload }));
+        break;
+      case 'UPDATE_INVENTORY_ITEM_STATUS':
+        setState(prev => ({
+          ...prev,
+          inventoryData: prev.inventoryData.map(item =>
+            item.id === action.payload.id
+              ? { ...item, estado: action.payload.status as any }
+              : item
+          ),
+        }));
+        break;
+      case 'ADD_RECENT_ACTIVITY':
+        setState(prev => ({
+          ...prev,
+          recentActivities: [action.payload, ...prev.recentActivities].slice(0, 50),
+        }));
+        break;
+      case 'UPDATE_PENDING_TASK':
+        setState(prev => ({
+          ...prev,
+          pendingTasksData: prev.pendingTasksData.map(task =>
+            task.id === action.payload.id
+              ? { ...task, ...action.payload.updates }
+              : task
+          ),
+        }));
+        break;
+      case 'UPDATE_USER_COLUMN_PREFERENCES':
+        setState(prev => {
+          const existingPreference = prev.userColumnPreferences.find(p => p.page === action.payload.pageId);
+          if (existingPreference) {
+            return {
+              ...prev,
+              userColumnPreferences: prev.userColumnPreferences.map(p =>
+                p.page === action.payload.pageId
+                  ? {
+                    ...p,
+                    preferences: p.preferences.map(col => ({
+                      ...col,
+                      visible: action.payload.columns.includes(col.id),
+                    })),
+                  }
+                  : p
+              ),
+            };
+          }
+          return prev;
+        });
+        break;
+      case 'UPDATE_USER_THEME':
+        setState(prev => ({
+          ...prev,
+          userTheme: action.payload
+        }));
+        break;
+      case 'UPDATE_MARCAS':
+        setState(prev => ({
+          ...prev,
+          marcas: action.payload
+        }));
+        break;
+      case 'ADD_PENDING_REQUEST':
+        setState(prev => ({
+          ...prev,
+          pendingActionRequests: [...prev.pendingActionRequests, action.payload]
+        }));
+        break;
+      default:
+        console.error('Unknown action type');
+    }
+  }, []);
+
   const value = React.useMemo(
     () => ({
       state,
+      dispatch,
       setUser,
       updateInventory,
       addInventoryItem,
       updateInventoryItem,
+      updateInventoryItemStatus: (id: number, status: string) => {
+        updateInventoryItem(id, { estado: status as "Disponible" | "Asignado" | "Prestado" | "Retirado" | "En Mantenimiento" | "PENDIENTE_DE_RETIRO" })
+      },
       removeInventoryItem,
-      updateAsignados, // Re-added
+      updateAsignados,
       addAssignment,
       removeAssignment,
       updateAssignmentStatus,
-      updatePrestamos, // Re-added
+      updatePrestamos,
       addLoan,
       removeLoan,
       updateLoanStatus,
       updateSolicitudes,
       addSolicitudAcceso,
       updatePendingActionRequests,
-      addPendingActionRequest,
+      addPendingRequest,
       addRecentActivity,
       updateUserInUsersData,
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,
+      updateUserTheme,
+      updateMarcas,
     }),
     [
       state,
+      dispatch,
       setUser,
       updateInventory,
       addInventoryItem,
@@ -703,12 +816,14 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       updateSolicitudes,
       addSolicitudAcceso,
       updatePendingActionRequests,
-      addPendingActionRequest,
+      addPendingRequest,
       addRecentActivity,
       updateUserInUsersData,
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,
+      updateUserTheme,
+      updateMarcas,
     ],
   )
 
