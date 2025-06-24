@@ -134,13 +134,24 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
   };
 
   const handleSubmit = async () => {
-    if (!formData.productName) {
+    // Verificar campos obligatorios independientemente de la pestaña activa
+    if (!formData.productName || !formData.brand || !formData.model || !formData.category) {
+      // Determinar qué campos están faltando para mostrar un mensaje más específico
+      const missingFields = [];
+      if (!formData.productName) missingFields.push("Nombre del Producto");
+      if (!formData.brand) missingFields.push("Marca");
+      if (!formData.model) missingFields.push("Modelo");
+      if (!formData.category) missingFields.push("Categoría");
+
       toast({
         title: "Campos requeridos",
-        description: "Por favor, completa el nombre del producto.",
+        description: `Por favor, completa los siguientes campos obligatorios: ${missingFields.join(", ")}.`,
         variant: "destructive",
-      })
-      return
+      });
+
+      // Cambiar a la pestaña básica si hay campos faltantes
+      setActiveTab("basic");
+      return;
     }
 
     setIsLoading(true)
@@ -171,6 +182,7 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
     // Simulate task creation for editing
     setTimeout(() => {
       addPendingTask({
+        id: Math.floor(Math.random() * 10000), // Añadir ID requerido
         type: "Edición de Producto",
         creationDate: new Date().toISOString(),
         createdBy: state.user?.nombre || "Usuario Rápido",

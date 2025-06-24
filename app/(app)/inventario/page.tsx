@@ -668,11 +668,30 @@ export default function InventarioPage() {
     setIsLoading(true)
     const form = document.getElementById("product-form") as HTMLFormElement
     const formData = new FormData(form)
+
+    // Verificar campos obligatorios independientemente de la pestaña activa
+    const nombre = formData.get("nombre") as string || selectedProduct?.nombre
+    const marca = tempMarca || selectedProduct?.marca
+    const modelo = formData.get("modelo") as string || selectedProduct?.modelo
+    const categoria = formData.get("categoria") as string || selectedProduct?.categoria
+
+    if (!nombre || !marca || !modelo || !categoria) {
+      toast({
+        title: "Campos requeridos",
+        description: "Por favor, completa todos los campos obligatorios (Nombre, Marca, Modelo y Categoría).",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      // Cambiar a la pestaña básica si hay campos faltantes
+      setActiveFormTab("basic")
+      return
+    }
+
     const productData = {
-      nombre: formData.get("nombre") as string,
-      marca: tempMarca,
-      modelo: formData.get("modelo") as string,
-      categoria: formData.get("categoria") as string,
+      nombre: nombre,
+      marca: marca,
+      modelo: modelo,
+      categoria: categoria,
       descripcion: formData.get("descripcion") as string,
       estado: selectedProduct?.estado || "Disponible",
       cantidad: hasSerialNumber ? 1 : Number.parseInt(formData.get("cantidad") as string) || 1,
