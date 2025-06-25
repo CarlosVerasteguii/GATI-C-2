@@ -5,6 +5,20 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 ## [Unreleased]
 
 ### Added
+- **🚀 Sistema de Navegación Enterprise-Grade Completado (4 mejoras críticas):**
+  - **Indicadores de Carga:** Loading spinners inteligentes con auto-timeout de 5 segundos
+  - **Badge Contador de Tareas:** Polling automático cada 60 segundos con colores semánticos (SRS compliance)
+  - **Atajos de Teclado:** Navegación ultrarrápida con estándares VS Code (Ctrl+B, Ctrl+Shift+D/I/T)
+  - **Breadcrumbs Inteligentes:** Navegación contextual automática con truncamiento inteligente
+- **Hooks Personalizados de Navegación:**
+  - `useNavigation()` - Manejo de estados de carga y transiciones
+  - `usePendingTasks()` - Polling automático de tareas pendientes con RBAC
+  - `useGatiKeyboardShortcuts()` - Sistema extensible de atajos de teclado
+- **Componentes de Navegación Avanzados:**
+  - `Breadcrumbs` - Migas de pan con detección automática de rutas
+  - `KeyboardShortcutsHelp` - Modal de ayuda interactivo (Ctrl+?)
+  - `NavigationDemo` - Componente de demostración de mejoras
+- **Documentación Técnica Completa:** `navigation_improvements.md` con especificaciones enterprise
 - **Sistema Completo de Toasts Enterprise (55 implementaciones):**
   - Toasts de progreso para operaciones masivas (Bulk Edit, Assign, Retire, Lend)
   - Validación inteligente en tiempo real (números de serie duplicados, emails, fechas, costos)
@@ -26,6 +40,11 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
   - Documentación de API de toasts con ejemplos de uso
 
 ### Changed
+- **🔄 Arquitectura de Navegación Mejorada:** Sistema modular con hooks especializados
+  - Sidebar responsive con colapso inteligente (Ctrl+B)
+  - Badge dinámico solo para Admin/Editor (RBAC compliance)
+  - Breadcrumbs responsive (ocultos en mobile automáticamente)
+  - Indicadores de carga por item y globales
 - **Migración Completa del Sistema de Toasts:** De básico Radix UI a sistema enterprise ultra-limpio
   - APIs mejoradas: `showSuccess()`, `showError()`, `showWarning()`, `showInfo()`
   - Fondos sólidos profesionales con sutiles efectos de sombra

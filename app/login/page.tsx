@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { LogIn, Info, HelpCircle, Loader2, PackageMinus, PackagePlus } from "lucide-react"
 import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { useApp } from "@/contexts/app-context"
@@ -21,6 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [rememberMe, setRememberMe] = useState(false)
   const [isQuickLoadModalOpen, setIsQuickLoadModalOpen] = useState(false)
   const [isQuickRetireModalOpen, setIsQuickRetireModalOpen] = useState(false)
   const [isAccessRequestModalOpen, setIsAccessRequestModalOpen] = useState(false)
@@ -31,11 +33,32 @@ export default function LoginPage() {
   const { state, setUser, addRecentActivity } = useApp()
   const router = useRouter()
 
-
+  // Load remembered credentials on component mount
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
     if (state.user) {
       router.push("/dashboard")
+      return
+    }
+
+    // Load remembered credentials from localStorage
+    const rememberedCredentials = localStorage.getItem("gati-c-remember-me")
+    if (rememberedCredentials) {
+      try {
+        const { username: savedUsername, rememberMe: wasRemembered } = JSON.parse(rememberedCredentials)
+        if (wasRemembered && savedUsername) {
+          setUsername(savedUsername)
+          setRememberMe(true)
+          showInfo({
+            title: "Sesión recordada",
+            description: `Bienvenido de vuelta, ${savedUsername}. Solo ingresa tu contraseña.`,
+            duration: 3000
+          })
+        }
+      } catch (error) {
+        // Clear invalid data
+        localStorage.removeItem("gati-c-remember-me")
+      }
     }
   }, [state.user, router])
 
@@ -44,24 +67,43 @@ export default function LoginPage() {
 
     setIsLoading(true)
 
-    // Debugging: Log current users data and entered credentials
-    console.log("Attempting login with:", { username, password })
-    console.log(
-      "Available users:",
-      state.usersData.map((u) => ({ nombre: u.nombre, rol: u.rol, password: u.password })),
-    )
+    // Remove debug console.log for production
+    // console.log("Attempting login with:", { username, password })
 
     const foundUser = state.usersData.find(
       (user) => user.nombre.toLowerCase() === username.toLowerCase() && user.password === password, // Check password
     )
 
     if (foundUser) {
+      // Handle Remember Me functionality
+      if (rememberMe) {
+        localStorage.setItem("gati-c-remember-me", JSON.stringify({
+          username: foundUser.nombre,
+          rememberMe: true,
+          lastLogin: new Date().toISOString()
+        }))
+        showInfo({
+          title: "Credenciales guardadas",
+          description: "Tus credenciales han sido guardadas para próximos inicios de sesión.",
+          duration: 2000
+        })
+      } else {
+        // Clear any existing remembered credentials if user unchecked the box
+        localStorage.removeItem("gati-c-remember-me")
+      }
+
       setUser(foundUser)
       addRecentActivity({
         type: "Inicio de Sesión",
-        description: `Usuario ${foundUser.nombre} (${foundUser.rol}) ha iniciado sesión.`,
+        description: `Usuario ${foundUser.nombre} (${foundUser.rol}) ha iniciado sesión ${rememberMe ? 'con credenciales recordadas' : ''}.`,
         date: new Date().toLocaleString(),
-        details: { userId: foundUser.id, userName: foundUser.nombre, userRole: foundUser.rol },
+        details: {
+          userId: foundUser.id,
+          userName: foundUser.nombre,
+          userRole: foundUser.rol,
+          rememberMe: rememberMe,
+          loginMethod: rememberMe ? "remembered" : "manual"
+        },
       })
       showSuccess({
         title: "Inicio de sesión exitoso",
@@ -81,7 +123,7 @@ export default function LoginPage() {
   // Determine if quick actions should be available (e.g., for trusted IPs or specific roles)
   // For demo, let's make it available if any user is logged in or if a specific trusted user exists
   const simulatedCurrentIp = "192.168.1.100"
-  const trustedUserForQuickActions = state.usersData.find((user) => user.trustedIp === simulatedCurrentIp)
+  const trustedUserForQuickActions = state.usersData.find((user) => (user as any).trustedIp === simulatedCurrentIp)
   const showQuickActions = !!trustedUserForQuickActions
 
   return (
@@ -141,6 +183,22 @@ export default function LoginPage() {
                   required
                 />
               </div>
+
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember-me"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <Label
+                  htmlFor="remember-me"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Recordar mis credenciales
+                </Label>
+              </div>
+
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary-hover transition-colors duration-200"
@@ -212,6 +270,7 @@ export default function LoginPage() {
                 <li>• Flujo de tareas pendientes</li>
                 <li>• Auditoría completa de actividades</li>
                 <li>• Interfaz optimizada para CFE</li>
+                <li>• Recordar credenciales de usuario</li>
               </ul>
             </div>
             <div className="space-y-2">
