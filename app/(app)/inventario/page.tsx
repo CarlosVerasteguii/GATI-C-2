@@ -910,7 +910,7 @@ export default function InventarioPage() {
     }
   }
 
-  const isLector = state.user?.rol === "Visualizador" // Updated role name
+  const isLector = state.user?.rol === "Lector" // Corregido según PRD
 
   // Function to calculate available and unavailable quantities for non-serialized items
   const getNonSerializedQtyBreakdown = (item: InventoryItem): QtyBreakdown | null => {
@@ -981,7 +981,7 @@ export default function InventarioPage() {
     }
   }
 
-  const canShowBulkActions = selectedRowIds.length > 0 && state.user?.rol !== "Visualizador" // Updated role name
+  const canShowBulkActions = selectedRowIds.length > 0 && state.user?.rol !== "Lector" // Corregido según PRD
 
   // Función para manejar el cambio a estado de mantenimiento
   const handleMaintenanceState = (product: InventoryItem) => {

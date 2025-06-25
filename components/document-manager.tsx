@@ -20,7 +20,7 @@ import DocumentViewer from './document-viewer'
 import { type DocumentMetadata } from '@/lib/document-storage'
 import { cn } from '@/lib/utils'
 
-type UserRole = 'admin' | 'editor' | 'lector'
+type UserRole = 'Administrador' | 'Editor' | 'Lector'
 
 interface DocumentManagerProps {
     productId: number
@@ -49,8 +49,8 @@ export default function DocumentManager({
     const [activeTab, setActiveTab] = useState('upload')
 
     // Permisos según PRD
-    const canUpload = userRole === 'admin' || userRole === 'editor'
-    const canViewTrash = userRole === 'admin'
+    const canUpload = userRole === 'Administrador' || userRole === 'Editor'
+    const canViewTrash = userRole === 'Administrador'
 
     // Filtros de documentos
     const activeDocuments = documents.filter(doc => !doc.isDeleted)

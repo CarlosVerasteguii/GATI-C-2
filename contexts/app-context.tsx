@@ -56,7 +56,7 @@ interface User {
   nombre: string
   email: string
   password?: string // Should not be stored in client-side state normally
-  rol: "Administrador" | "Editor" | "Visualizador" // Updated role name
+  rol: "Administrador" | "Editor" | "Lector" // Corregido según PRD
   departamento?: string
 }
 
@@ -141,7 +141,7 @@ interface AppState {
 const defaultUsersData: User[] = [
   { id: 1, nombre: "Carlos Vera", email: "carlos@example.com", password: "password123", rol: "Administrador" },
   { id: 2, nombre: "Ana López", email: "ana@example.com", password: "password123", rol: "Editor" },
-  { id: 3, nombre: "Pedro García", email: "pedro@example.com", password: "password123", rol: "Visualizador" }, // Updated role name
+  { id: 3, nombre: "Pedro García", email: "pedro@example.com", password: "password123", rol: "Lector" }, // Corregido según PRD
 ]
 
 const defaultInventoryData: InventoryItem[] = [
@@ -455,7 +455,7 @@ const defaultPendingTasksData: PendingTask[] = [
         event: "CREACIÓN",
         user: "Pedro García",
         dateTime: "2024-06-18T11:00:00Z",
-        description: "Solicitud de préstamo creada por Visualizador.",
+        description: "Solicitud de préstamo creada por Lector.",
       },
     ],
   },

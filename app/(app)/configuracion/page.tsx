@@ -25,7 +25,7 @@ export default function ConfiguracionPage() {
       nombre: request.nombre,
       email: request.email,
       password: request.password, // Usar la contraseña que definió el usuario
-      rol: "Visualizador" as const, // Rol por defecto para nuevos usuarios
+      rol: "Lector" as const, // Rol por defecto para nuevos usuarios
     }
 
     // ✅ Agregar el usuario a la lista de usuarios
@@ -33,7 +33,7 @@ export default function ConfiguracionPage() {
 
     showSuccess({
       title: "✅ Solicitud Aprobada",
-      description: `${request.nombre} ha sido agregado como usuario con rol Visualizador. Ya puede iniciar sesión.`,
+      description: `${request.nombre} ha sido agregado como usuario con rol Lector. Ya puede iniciar sesión.`,
     })
 
     addRecentActivity({

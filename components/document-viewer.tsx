@@ -57,7 +57,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { DocumentPreview } from './document-preview'
 
-type UserRole = 'admin' | 'editor' | 'lector'
+type UserRole = 'Administrador' | 'Editor' | 'Lector'
 
 interface DocumentViewerProps {
     documents: DocumentMetadata[]
@@ -90,8 +90,8 @@ function DocumentItem({
     const [isRestoring, setIsRestoring] = useState(false)
 
     // Permisos según PRD
-    const canDelete = !document.isDeleted && (userRole === 'admin' || userRole === 'editor')
-    const canRestore = document.isDeleted && userRole === 'admin'
+    const canDelete = !document.isDeleted && (userRole === 'Administrador' || userRole === 'Editor')
+    const canRestore = document.isDeleted && userRole === 'Administrador'
     const canView = !document.isDeleted
 
     // Formatear tamaño
@@ -386,7 +386,7 @@ export default function DocumentViewer({
             )}
 
             {/* Papelera (solo para Administradores) */}
-            {showTrash && userRole === 'admin' && trashedDocuments.length > 0 && (
+            {showTrash && userRole === 'Administrador' && trashedDocuments.length > 0 && (
                 <div>
                     <h3 className="text-sm font-medium text-red-600 mb-3 flex items-center gap-2">
                         <Trash2 className="h-4 w-4" />

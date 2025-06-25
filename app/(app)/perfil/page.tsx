@@ -17,7 +17,7 @@ interface ExtendedUser {
   nombre: string
   email: string
   password?: string
-  rol: "Administrador" | "Editor" | "Visualizador"
+  rol: "Administrador" | "Editor" | "Lector"
   departamento?: string
   trustedIp?: string
 }

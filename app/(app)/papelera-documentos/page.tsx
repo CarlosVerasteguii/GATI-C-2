@@ -29,6 +29,16 @@ interface DeletedDocument {
     retentionDaysLeft: number
 }
 
+// Función helper para mapear roles
+const mapRoleToEnglish = (spanishRole: string): string => {
+    switch (spanishRole) {
+        case "Administrador": return "admin"
+        case "Editor": return "editor"
+        case "Lector": return "lector"
+        default: return "lector"
+    }
+}
+
 export default function PapeleraDocumentosPage() {
     const { state } = useApp()
     const [searchTerm, setSearchTerm] = useState("")
@@ -36,7 +46,7 @@ export default function PapeleraDocumentosPage() {
     const [filterReason, setFilterReason] = useState("")
     const [filterUser, setFilterUser] = useState("")
 
-    // Verificar permisos
+    // Verificar permisos - CORREGIDO para usar roles en español
     const userRole = state.user?.rol
     const hasAccess = userRole === "Administrador" || userRole === "Editor"
     const canRestore = userRole === "Administrador"
