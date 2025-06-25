@@ -4,6 +4,57 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 
 ## [Unreleased]
 
+## [2.2.0] - 2025-01-26
+
+### 🚀 FASE 1: SISTEMA DE DOCUMENTOS ADJUNTOS COMPLETADO ✅
+
+#### ✨ Funcionalidades Principales Implementadas
+- **Sistema Completo de Upload de Documentos**: Drag & drop con validación en tiempo real
+- **Gestión de Documentos SISE/Contrato de Compra**: Según especificaciones exactas del PRD
+- **Sistema de Papelera Inteligente**: Retención 30 días con restauración (solo Admins)
+- **Control RBAC Completo**: Permisos diferenciados por roles Admin/Editor/Lector
+- **Versioning Automático**: Backup de versiones anteriores
+- **Validaciones Específicas del PRD**: Mensajes de error exactos según documentación
+
+#### 📁 Archivos Creados/Modificados
+**Nuevos Componentes:**
+- `lib/document-storage.ts` - Lógica de negocio y validaciones
+- `components/document-upload.tsx` - Interfaz drag & drop
+- `components/document-viewer.tsx` - Visualización y gestión
+- `components/document-manager.tsx` - Componente integrador principal
+- `components/document-demo.tsx` - Página de demostración completa
+- `documentation/document_system_implementation.md` - Documentación técnica
+
+#### 🔧 Especificaciones Técnicas
+- **Tipos permitidos**: PDF (.pdf) y Word (.docx)
+- **Límite por archivo**: 100MB
+- **Límite por producto**: 10 documentos
+- **Sistema de papelera**: 30 días de retención
+- **Versioning**: Automático con referencias a versiones anteriores
+- **RBAC**: Control granular según matriz de permisos del PRD
+
+#### ✅ Cumplimiento PRD Completo
+- [x] Gestión documentos SISE/Contrato de Compra
+- [x] Múltiples documentos por producto
+- [x] Visualización en nueva pestaña
+- [x] Eliminación a papelera con registro
+- [x] Restauración solo para Administradores
+- [x] Límite 100MB por archivo
+- [x] Retención 30 días en papelera
+- [x] Versioning con backup automático
+- [x] Mensajes de error específicos
+- [x] Interfaz moderna y fluida
+
+#### 🎯 Demo Funcional
+- **Simulador de roles**: Admin/Editor/Lector
+- **Datos de ejemplo**: Documentos activos y en papelera
+- **Métricas en tiempo real**: Estado del sistema
+- **Testing completo**: 10 casos de prueba cubiertos
+
+---
+
+## [2.1.0] - 2025-01-26
+
 ### Added
 - **🚀 Sistema de Navegación Enterprise-Grade Completado (4 mejoras críticas):**
   - **Indicadores de Carga:** Loading spinners inteligentes con auto-timeout de 5 segundos
