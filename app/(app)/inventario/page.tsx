@@ -72,6 +72,8 @@ import { ConfirmationDialogForEditor } from "@/components/confirmation-dialog-fo
 import { ActionMenu } from "@/components/action-menu"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import DocumentManager from "@/components/document-manager"
+
 
 // Definición de interfaces para tipar correctamente
 interface InventoryItem {
@@ -687,7 +689,7 @@ export default function InventarioPage() {
         type: 'UPDATE_INVENTORY',
         payload: newInventory
       })
-      setIsModalOpen(false)
+      setIsAddProductModalOpen(false)
       setSelectedProduct(null)
       setProcessingTaskId(null)
       setIsLoading(false)
@@ -1690,11 +1692,8 @@ export default function InventarioPage() {
                         Marca <span className="text-red-500">*</span>
                       </Label>
                       <BrandCombobox
-                        id="marca"
-                        name="marca"
                         value={tempMarca}
-                        setValue={setTempMarca}
-                        options={state.marcas}
+                        onValueChange={setTempMarca}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1861,63 +1860,13 @@ export default function InventarioPage() {
 
               {/* Pestaña: Documentación */}
               <TabsContent value="documents">
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-4">
-                    <h3 className="font-medium mb-2">Documentos Adjuntos</h3>
-
-                    {attachedDocuments.length > 0 ? (
-                      <div className="space-y-2 mb-4">
-                        {attachedDocuments.map(doc => (
-                          <div key={doc.id} className="flex items-center justify-between p-2 border rounded bg-muted/30">
-                            <div className="flex items-center">
-                              <ExternalLink className="h-4 w-4 mr-2 text-muted-foreground" />
-                              <span className="text-sm font-medium">{doc.name}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button variant="ghost" size="sm" asChild>
-                                <a href={doc.url} target="_blank" rel="noopener noreferrer">Ver</a>
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-500">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground mb-4">No hay documentos adjuntos para este producto.</p>
-                    )}
-
-                    <div className="mt-4">
-                      <div className="flex items-center space-x-2">
-                        <Input
-                          type="file"
-                          accept=".pdf,.docx"
-                          onChange={(e) => setSelectedFiles(e.target.files)}
-                          disabled={uploadingFiles}
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleFileUpload}
-                          disabled={!selectedFiles || uploadingFiles}
-                          className="whitespace-nowrap"
-                        >
-                          {uploadingFiles ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Subiendo...
-                            </>
-                          ) : (
-                            "Subir"
-                          )}
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Formatos permitidos: PDF, DOCX. Tamaño máximo: 100MB.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <DocumentManager
+                  productId={selectedProduct?.id || 0}
+                  productName={selectedProduct?.nombre || "Producto"}
+                  userRole={state.user?.rol === "Administrador" ? "admin" : state.user?.rol === "Editor" ? "editor" : "lector"}
+                  currentUserId={state.user?.nombre || "usuario"}
+                  maxFiles={10}
+                />
               </TabsContent>
             </Tabs>
 

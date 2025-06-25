@@ -22,7 +22,8 @@ import {
     AlertTriangle,
     Clock,
     User,
-    FileX
+    FileX,
+    Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -54,6 +55,7 @@ import {
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { DocumentPreview } from './document-preview'
 
 type UserRole = 'admin' | 'editor' | 'lector'
 
@@ -209,6 +211,21 @@ function DocumentItem({
 
                             {/* Acciones */}
                             <div className="flex items-center gap-1">
+                                {canView && (
+                                    <DocumentPreview
+                                        document={document}
+                                    >
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0"
+                                            title="Vista previa del documento"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                    </DocumentPreview>
+                                )}
+
                                 {canView && (
                                     <TooltipProvider>
                                         <Tooltip>

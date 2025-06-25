@@ -15,6 +15,8 @@ import {
   Handshake,
   UserCheck,
   Loader2,
+  FileText,
+  Trash2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -96,11 +98,18 @@ export function AppLayout({ children }: AppLayoutProps) {
       roles: ["Administrador", "Editor", "Lector"],
     },
     {
+      name: "Papelera Documentos",
+      href: "/papelera-documentos",
+      icon: Trash2,
+      roles: ["Administrador", "Editor"],
+    },
+    {
       name: "Configuración",
       href: "/configuracion",
       icon: Settings,
       roles: ["Administrador"],
     },
+
   ]
 
   const filteredNavItems = navItems.filter((item) => state.user && item.roles.includes(state.user.rol))
