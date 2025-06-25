@@ -67,6 +67,7 @@ interface SolicitudAcceso {
   justificacion: string
   fecha: string
   estado: "Pendiente" | "Aprobada" | "Rechazada"
+  password?: string // Temporal password storage for approved access requests
 }
 
 interface PendingActionRequest {
@@ -515,10 +516,12 @@ interface AppContextType {
   updateLoanStatus: (id: number, status: PrestamoItem["estado"]) => void
   updateSolicitudes: (solicitud: SolicitudAcceso[]) => void
   addSolicitudAcceso: (solicitud: SolicitudAcceso) => void
+  updateSolicitudStatus: (id: number, status: SolicitudAcceso["estado"]) => void
   updatePendingActionRequests: (requests: PendingActionRequest[]) => void
   addPendingRequest: (request: PendingActionRequest) => void
   addRecentActivity: (activity: RecentActivity) => void
   updateUserInUsersData: (userId: number, updates: Partial<User>) => void
+  addUserToUsersData: (user: User) => void
   addPendingTask: (task: PendingTask) => void
   updatePendingTask: (taskId: number, updates: Partial<PendingTask>) => void
   updateUserColumnPreferences: (userId: number, pageId: string, columns: string[]) => void
@@ -630,6 +633,15 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setState((prevState) => ({ ...prevState, solicitudesAcceso: [...prevState.solicitudesAcceso, solicitud] }))
   }, [])
 
+  const updateSolicitudStatus = useCallback((id: number, status: SolicitudAcceso["estado"]) => {
+    setState((prevState) => ({
+      ...prevState,
+      solicitudesAcceso: prevState.solicitudesAcceso.map((solicitud) =>
+        solicitud.id === id ? { ...solicitud, estado: status } : solicitud
+      ),
+    }))
+  }, [])
+
   const updatePendingActionRequests = useCallback((requests: PendingActionRequest[]) => {
     setState((prevState) => ({ ...prevState, pendingActionRequests: requests }))
   }, [])
@@ -649,6 +661,13 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setState((prevState) => ({
       ...prevState,
       usersData: prevState.usersData.map((user) => (user.id === userId ? { ...user, ...updates } : user)),
+    }))
+  }, [])
+
+  const addUserToUsersData = useCallback((user: User) => {
+    setState((prevState) => ({
+      ...prevState,
+      usersData: [...prevState.usersData, user],
     }))
   }, [])
 
@@ -787,10 +806,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       updateLoanStatus,
       updateSolicitudes,
       addSolicitudAcceso,
+      updateSolicitudStatus,
       updatePendingActionRequests,
       addPendingRequest,
       addRecentActivity,
       updateUserInUsersData,
+      addUserToUsersData,
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,
@@ -815,10 +836,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       updateLoanStatus,
       updateSolicitudes,
       addSolicitudAcceso,
+      updateSolicitudStatus,
       updatePendingActionRequests,
       addPendingRequest,
       addRecentActivity,
       updateUserInUsersData,
+      addUserToUsersData,
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,

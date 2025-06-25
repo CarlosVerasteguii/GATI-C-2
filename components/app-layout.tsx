@@ -14,13 +14,20 @@ import {
   ClipboardList,
   Handshake,
   UserCheck,
+  Loader2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/contexts/app-context"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useDevice } from "@/hooks/use-device"
+import { useNavigation } from "@/hooks/use-navigation"
+import { usePendingTasks } from "@/hooks/use-pending-tasks"
+import { useGatiKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { Breadcrumbs } from "@/components/breadcrumbs"
+import { KeyboardShortcutsHelp } from "@/components/keyboard-shortcuts-help"
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -31,7 +38,20 @@ export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false)
   const { isMobile, isTablet } = useDevice()
+
+  // Hooks para las nuevas funcionalidades
+  const { isNavigating, loadingPage } = useNavigation()
+  const { total: pendingTasksCount, isLoading: tasksLoading } = usePendingTasks()
+
+  // Configurar atajos de teclado
+  useGatiKeyboardShortcuts({
+    toggleSidebar: () => setSidebarCollapsed(prev => !prev),
+    goToDashboard: () => router.push('/dashboard'),
+    goToInventory: () => router.push('/inventario'),
+    goToTasks: () => router.push('/tareas-pendientes')
+  })
 
   const handleLogout = () => {
     setUser(null)
@@ -93,6 +113,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   const getSidebarWidth = () => {
+    if (sidebarCollapsed) return "md:grid-cols-[80px_1fr]"
     if (isTablet) return "md:grid-cols-[260px_1fr]"
     return "md:grid-cols-[280px_1fr] lg:grid-cols-[320px_1fr]"
   }
@@ -113,16 +134,49 @@ export function AppLayout({ children }: AppLayoutProps) {
               {filteredNavItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href
+                const isLoadingThis = isNavigating && loadingPage === item.href
+                const showBadge = item.name === "Tareas Pendientes" && pendingTasksCount > 0
+
                 return (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className={`flex items-center gap-4 rounded-lg px-4 py-3 transition-all hover:text-primary ${isActive ? "bg-muted text-primary font-semibold" : "text-muted-foreground"
-                      }`}
+                    className={`flex items-center rounded-lg px-4 py-3 transition-all hover:text-primary relative ${sidebarCollapsed ? "justify-center gap-0" : "gap-4"
+                      } ${isActive ? "bg-muted text-primary font-semibold" : "text-muted-foreground"
+                      } ${isLoadingThis ? "opacity-75" : ""}`}
                     prefetch={false}
+                    title={sidebarCollapsed ? item.name : undefined}
                   >
-                    <Icon className={getIconSize()} />
-                    <span className="text-base">{item.name}</span>
+                    <Icon className={`${getIconSize()} ${isLoadingThis ? "animate-pulse" : ""}`} />
+
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="text-base flex-1">{item.name}</span>
+
+                        {/* Badge de contador para Tareas Pendientes */}
+                        {showBadge && (
+                          <Badge
+                            className={`text-xs px-2 py-1 ${pendingTasksCount > 5
+                              ? "bg-red-500 hover:bg-red-600 text-white"
+                              : "bg-amber-500 hover:bg-amber-600 text-white"
+                              }`}
+                            title={`${pendingTasksCount} tareas pendientes`}
+                          >
+                            {pendingTasksCount > 99 ? '99+' : pendingTasksCount}
+                          </Badge>
+                        )}
+
+                        {/* Indicador de carga */}
+                        {isLoadingThis && (
+                          <Loader2 className="h-4 w-4 animate-spin ml-auto" />
+                        )}
+                      </>
+                    )}
+
+                    {/* Badge en modo colapsado - como dot notification */}
+                    {sidebarCollapsed && showBadge && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                    )}
                   </Link>
                 )
               })}
@@ -130,19 +184,33 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
           {/* Sección de logout ahora con posición sticky */}
           <div className="sticky bottom-0 p-5 border-t bg-muted/40">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {state.user?.nombre} ({state.user?.rol})
-                </span>
+            {!sidebarCollapsed ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm font-medium">
+                      {state.user?.nombre} ({state.user?.rol})
+                    </span>
+                  </div>
+                  <ThemeToggle />
+                </div>
+                <Button variant="secondary" className="w-full py-5 text-base" onClick={handleLogout}>
+                  <LogOut className="mr-3 h-5 w-5" />
+                  Cerrar Sesión
+                </Button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative" title={`${state.user?.nombre} (${state.user?.rol})`}>
+                  <Users className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <ThemeToggle />
+                <Button variant="secondary" size="icon" className="w-10 h-10" onClick={handleLogout} title="Cerrar Sesión">
+                  <LogOut className="h-5 w-5" />
+                </Button>
               </div>
-              <ThemeToggle />
-            </div>
-            <Button variant="secondary" className="w-full py-5 text-base" onClick={handleLogout}>
-              <LogOut className="mr-3 h-5 w-5" />
-              Cerrar Sesión
-            </Button>
+            )}
           </div>
         </div>
       </div>
@@ -168,17 +236,37 @@ export function AppLayout({ children }: AppLayoutProps) {
                 {filteredNavItems.map((item) => {
                   const Icon = item.icon
                   const isActive = pathname === item.href
+                  const isLoadingThis = isNavigating && loadingPage === item.href
+                  const showBadge = item.name === "Tareas Pendientes" && pendingTasksCount > 0
+
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 ${isActive ? "bg-muted text-foreground" : "text-muted-foreground"
-                        } hover:text-foreground`}
+                      className={`mx-[-0.65rem] flex items-center gap-4 rounded-xl px-3 py-2 relative ${isActive ? "bg-muted text-foreground" : "text-muted-foreground"
+                        } hover:text-foreground ${isLoadingThis ? "opacity-75" : ""}`}
                       onClick={() => setIsMobileMenuOpen(false)}
                       prefetch={false}
                     >
-                      <Icon className="h-5 w-5" />
-                      {item.name}
+                      <Icon className={`h-5 w-5 ${isLoadingThis ? "animate-pulse" : ""}`} />
+                      <span className="flex-1">{item.name}</span>
+
+                      {/* Badge para móvil */}
+                      {showBadge && (
+                        <Badge
+                          className={`text-xs px-2 py-1 ${pendingTasksCount > 5
+                            ? "bg-red-500 text-white"
+                            : "bg-amber-500 text-white"
+                            }`}
+                        >
+                          {pendingTasksCount > 99 ? '99+' : pendingTasksCount}
+                        </Badge>
+                      )}
+
+                      {/* Indicador de carga móvil */}
+                      {isLoadingThis && (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      )}
                     </Link>
                   )
                 })}
@@ -200,12 +288,34 @@ export function AppLayout({ children }: AppLayoutProps) {
               </div>
             </SheetContent>
           </Sheet>
-          <div className="w-full flex-1">
+          <div className="w-full flex-1 flex items-center justify-between">
             <h1 className="text-lg font-semibold md:text-xl">
               {navItems.find((item) => item.href === pathname)?.name || "GATI-C"}
             </h1>
+
+            {/* Indicadores globales y ayuda */}
+            <div className="flex items-center gap-2">
+              {/* Indicador de carga global */}
+              {isNavigating && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="hidden sm:inline">Cargando...</span>
+                </div>
+              )}
+
+              {/* Ayuda de atajos de teclado */}
+              <KeyboardShortcutsHelp />
+            </div>
           </div>
         </header>
+
+        {/* Breadcrumbs - Solo en desktop y tablet */}
+        {!isMobile && (
+          <div className="px-4 py-2 border-b border-border/50 bg-background/50">
+            <Breadcrumbs />
+          </div>
+        )}
+
         <main className={`flex flex-1 flex-col gap-4 p-4 ${isMobile ? '' : 'lg:gap-6 lg:p-6'}`}>
           {children}
         </main>
