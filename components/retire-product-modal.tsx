@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { useApp } from "@/contexts/app-context"
 import { ConfirmationDialogForEditor } from "./confirmation-dialog-for-editor"
 
@@ -33,15 +33,14 @@ export function RetireProductModal({ open, onOpenChange, product, onSuccess }: R
   const [isLoading, setIsLoading] = useState(false)
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
   const [pendingActionDetails, setPendingActionDetails] = useState<any>(null)
-  const { toast } = useToast()
 
   const availableQuantity =
     product?.numeroSerie === null
       ? state.inventoryData
-          .filter(
-            (item) => item.nombre === product.nombre && item.modelo === product.modelo && item.estado === "Disponible",
-          )
-          .reduce((sum, item) => sum + item.cantidad, 0)
+        .filter(
+          (item) => item.nombre === product.nombre && item.modelo === product.modelo && item.estado === "Disponible",
+        )
+        .reduce((sum, item) => sum + item.cantidad, 0)
       : 1 // For serialized, it's always 1 if available
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -54,20 +53,18 @@ export function RetireProductModal({ open, onOpenChange, product, onSuccess }: R
     const quantity = product.numeroSerie === null ? Number.parseInt(formData.get("quantity") as string) : 1
 
     if (!retireReason) {
-      toast({
+      showError({
         title: "Error",
-        description: "Por favor, selecciona un motivo de retiro.",
-        variant: "destructive",
+        description: "Por favor, selecciona un motivo de retiro."
       })
       setIsLoading(false)
       return
     }
 
     if (product.numeroSerie === null && quantity > availableQuantity) {
-      toast({
+      showError({
         title: "Error de Cantidad",
-        description: `Solo hay ${availableQuantity} unidades disponibles para retirar.`,
-        variant: "destructive",
+        description: `Solo hay ${availableQuantity} unidades disponibles para retirar.`
       })
       setIsLoading(false)
       return
@@ -146,7 +143,7 @@ export function RetireProductModal({ open, onOpenChange, product, onSuccess }: R
         updateInventory(updatedInventory)
       }
 
-      toast({
+      showSuccess({
         title: "Producto retirado",
         description: `${details.productName} ha sido marcado como retirado por ${details.retireReason}.`,
       })
@@ -183,7 +180,7 @@ export function RetireProductModal({ open, onOpenChange, product, onSuccess }: R
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
       description: `Tu solicitud de ${pendingActionDetails.type.toLowerCase()} ha sido enviada a un administrador para aprobación.`,
     })

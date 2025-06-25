@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Progress } from "@/components/ui/progress"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import {
   Plus,
   Upload,
@@ -255,7 +255,7 @@ export default function InventarioPage() {
   const [sortColumn, setSortColumn] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  const { toast } = useToast()
+
 
   // Handle URL params for processing tasks
   useEffect(() => {
@@ -295,7 +295,7 @@ export default function InventarioPage() {
       const task = state.pendingTasksData.find((t) => t.id === taskId && t.type === "RETIRO")
       if (task && task.details.itemsImplicados) {
         setSelectedRowIds(task.details.itemsImplicados.map((item: any) => item.id))
-        toast({
+        showInfo({
           title: "Tarea de Retiro Pendiente",
           description: `Artículos de la tarea #${taskId} seleccionados para completar el retiro.`,
         })
@@ -508,7 +508,7 @@ export default function InventarioPage() {
         details: { product: { id: product.id, name: product.nombre, serial: product.numeroSerie } },
       }
     })
-    toast({
+    showSuccess({
       title: "Producto reactivado",
       description: `${product.nombre} ha sido reactivado y está disponible.`,
     })
@@ -537,131 +537,170 @@ export default function InventarioPage() {
   }
 
   const executeSaveProduct = (productData: Partial<InventoryItem>) => {
-    setTimeout(() => {
-      setIsAddProductModalOpen(false)
-      setIsLoading(false)
+    // Toast de autoguardado inmediato
+    showInfo({
+      title: "Guardando cambios...",
+      description: "Sincronizando datos con el servidor"
+    })
 
-      if (modalMode === "edit" && selectedProduct) {
+    // Simulation logic remains the same
+    setTimeout(() => {
+      let newInventory = [...state.inventoryData]
+
+      if (modalMode === "add") {
+        // Add new product
+        const newId = Math.max(...state.inventoryData.map((item) => item.id)) + 1
+        const newProduct = {
+          id: newId,
+          fechaIngreso: new Date().toISOString().split("T")[0],
+          ...productData,
+        } as InventoryItem
+
+        newInventory = [...state.inventoryData, newProduct]
+        showSuccess({
+          title: "Producto añadido",
+          description: `${productData.nombre} ha sido añadido al inventario exitosamente.`,
+        })
         appDispatch({
-          type: 'UPDATE_INVENTORY',
-          payload: state.inventoryData.map((item: InventoryItem) =>
-            (item.id === selectedProduct.id ? { ...item, ...productData } : item)
-          )
+          type: 'ADD_RECENT_ACTIVITY',
+          payload: {
+            type: "Creación de Producto",
+            description: `Producto "${productData.nombre}" creado`,
+            date: new Date().toLocaleString(),
+            details: newProduct,
+          }
+        })
+      } else if (modalMode === "edit") {
+        // Edit existing product
+        const originalProduct = state.inventoryData.find((item) => item.id === selectedProduct?.id)
+        newInventory = state.inventoryData.map((item) =>
+          item.id === selectedProduct?.id
+            ? {
+              ...item,
+              ...productData,
+            }
+            : item,
+        )
+
+        // Toast mejorado con información de cambios
+        showSuccess({
+          title: "Producto actualizado",
+          description: `Cambios guardados para "${productData.nombre || originalProduct?.nombre}"`
         })
         appDispatch({
           type: 'ADD_RECENT_ACTIVITY',
           payload: {
             type: "Edición de Producto",
-            description: `${productData.nombre} actualizado`,
+            description: `Producto "${productData.nombre || originalProduct?.nombre}" actualizado`,
             date: new Date().toLocaleString(),
-            details: {
-              productId: selectedProduct.id,
-              oldData: state.inventoryData.find((item: InventoryItem) => item.id === selectedProduct.id),
-              newData: productData,
-            },
+            details: { originalProduct, updatedProduct: productData },
           }
         })
-        toast({
-          title: "Producto actualizado",
-          description: "El producto ha sido actualizado exitosamente.",
+      } else if (modalMode === "duplicate") {
+        // Duplicate product
+        const newId = Math.max(...state.inventoryData.map((item) => item.id)) + 1
+        const duplicatedProduct = {
+          ...productData,
+          id: newId,
+          estado: "Disponible" as const,
+          numeroSerie: null, // Reset serial number for duplicated items
+          fechaIngreso: new Date().toISOString().split("T")[0],
+        } as InventoryItem
+
+        newInventory = [...state.inventoryData, duplicatedProduct]
+        showSuccess({
+          title: "Producto duplicado",
+          description: `Se ha creado una copia de "${productData.nombre}".`,
         })
-      } else {
-        const newItems: InventoryItem[] = []
-        if (productData.numeroSerie && hasSerialNumber) {
-          const serials = productData.numeroSerie.split("\n").filter(Boolean)
-          let currentMaxId = Math.max(...state.inventoryData.map((item: InventoryItem) => item.id))
-          serials.forEach((serial: string) => {
-            currentMaxId++
-            newItems.push({
-              id: currentMaxId,
-              nombre: productData.nombre || "",
-              marca: productData.marca || "",
-              modelo: productData.modelo || "",
-              categoria: productData.categoria || "",
-              estado: productData.estado || "Disponible",
-              cantidad: 1,
-              numeroSerie: serial.trim(),
-              descripcion: productData.descripcion,
-              proveedor: productData.proveedor,
-              fechaAdquisicion: productData.fechaAdquisicion,
-              contratoId: productData.contratoId,
-              fechaIngreso: new Date().toISOString().split("T")[0],
-              costo: productData.costo,
-              garantia: productData.garantia,
-              vidaUtil: productData.vidaUtil
-            })
-          })
-        } else {
-          const newId = Math.max(...state.inventoryData.map((item: InventoryItem) => item.id)) + 1
-          newItems.push({
+        appDispatch({
+          type: 'ADD_RECENT_ACTIVITY',
+          payload: {
+            type: "Duplicación de Producto",
+            description: `Producto "${productData.nombre}" duplicado`,
+            date: new Date().toLocaleString(),
+            details: duplicatedProduct,
+          }
+        })
+      } else if (modalMode === "process-carga") {
+        // Process pending task
+        if (processingTaskId) {
+          const task = state.tareasData.find((t) => t.id === processingTaskId)
+          if (!task) return
+
+          const newId = Math.max(...state.inventoryData.map((item) => item.id)) + 1
+          const newProduct = {
             id: newId,
-            nombre: productData.nombre || "",
-            marca: productData.marca || "",
-            modelo: productData.modelo || "",
-            categoria: productData.categoria || "",
-            estado: productData.estado || "Disponible",
-            cantidad: productData.cantidad || 1,
-            numeroSerie: productData.numeroSerie ? productData.numeroSerie.trim() : null,
-            descripcion: productData.descripcion,
-            proveedor: productData.proveedor,
-            fechaAdquisicion: productData.fechaAdquisicion,
-            contratoId: productData.contratoId,
+            nombre: task.details.productName,
+            marca: task.details.brand || "Sin marca",
+            modelo: task.details.model || "Sin modelo",
+            categoria: task.details.category || "Sin categoría",
+            descripcion: task.details.description || "",
+            estado: "Disponible" as const,
+            cantidad: task.details.quantity,
+            numeroSerie: task.details.serialNumbers?.[0] || null,
             fechaIngreso: new Date().toISOString().split("T")[0],
-            costo: productData.costo,
-            garantia: productData.garantia,
-            vidaUtil: productData.vidaUtil
+            proveedor: task.details.proveedor || null,
+            fechaAdquisicion: task.details.fechaAdquisicion || null,
+            contratoId: task.details.contratoId || null,
+          } as InventoryItem
+
+          newInventory = [...state.inventoryData, newProduct]
+
+          // Remove the processed task
+          const updatedTasks = state.tareasData.filter((t) => t.id !== processingTaskId)
+          appDispatch({
+            type: 'UPDATE_PENDING_TASK',
+            payload: {
+              id: processingTaskId,
+              updates: {
+                status: "Finalizada",
+                auditLog: [
+                  ...(state.pendingTasksData.find((t) => t.id === processingTaskId)?.auditLog || []),
+                  {
+                    event: "FINALIZACIÓN",
+                    user: state.user?.nombre || "Sistema",
+                    dateTime: new Date().toISOString(),
+                    description: `Tarea de carga procesada y producto añadido/actualizado en inventario.`,
+                  },
+                ],
+              }
+            }
+          })
+
+          showSuccess({
+            title: "Tarea procesada exitosamente",
+            description: `El producto "${task.details.productName}" ha sido añadido al inventario.`,
+          })
+          appDispatch({
+            type: 'ADD_RECENT_ACTIVITY',
+            payload: {
+              type: "Procesamiento de Tarea",
+              description: `Tarea #${processingTaskId} procesada: "${task.details.productName}" añadido`,
+              date: new Date().toLocaleString(),
+              details: { taskId: processingTaskId, newProduct },
+            }
           })
         }
-        appDispatch({
-          type: 'UPDATE_INVENTORY',
-          payload: [...state.inventoryData, ...newItems]
-        })
-        appDispatch({
-          type: 'ADD_RECENT_ACTIVITY',
-          payload: {
-            type: modalMode === "add" ? "Nuevo Producto" : "Duplicación de Producto",
-            description: `${newItems.length} producto(s) ${modalMode === "add" ? "añadido(s)" : "duplicado(s)"}`,
-            date: new Date().toLocaleString(),
-            details: { newProducts: newItems },
-          }
-        })
-        toast({
-          title: "Producto guardado",
-          description: `Se han guardado ${newItems.length} producto(s) exitosamente.`,
-        })
       }
 
-      if (processingTaskId !== null) {
-        appDispatch({
-          type: 'UPDATE_PENDING_TASK',
-          payload: {
-            id: processingTaskId,
-            updates: {
-              status: "Finalizada",
-              auditLog: [
-                ...(state.pendingTasksData.find((t) => t.id === processingTaskId)?.auditLog || []),
-                {
-                  event: "FINALIZACIÓN",
-                  user: state.user?.nombre || "Sistema",
-                  dateTime: new Date().toISOString(),
-                  description: `Tarea de carga procesada y producto añadido/actualizado en inventario.`,
-                },
-              ],
-            }
-          }
-        })
-        appDispatch({
-          type: 'ADD_RECENT_ACTIVITY',
-          payload: {
-            type: "Finalización de Tarea",
-            description: `Tarea de carga #${processingTaskId} finalizada`,
-            date: new Date().toLocaleString(),
-            details: { taskId: processingTaskId, taskType: "CARGA" },
-          }
-        })
-        setProcessingTaskId(null)
+      appDispatch({
+        type: 'UPDATE_INVENTORY',
+        payload: newInventory
+      })
+      setIsModalOpen(false)
+      setSelectedProduct(null)
+      setProcessingTaskId(null)
+      setIsLoading(false)
+      setModalMode("add")
+      setActiveFormTab("basic")
+      setTempMarca("")
+      setHasSerialNumber(false)
+      // Clear form data after successful save
+      const form = document.getElementById("product-form") as HTMLFormElement
+      if (form) {
+        form.reset()
       }
-    }, 1000)
+    }, 1200) // Ligeramente más tiempo para mostrar el progreso
   }
 
   const handleSaveProduct = async () => {
@@ -676,10 +715,9 @@ export default function InventarioPage() {
     const categoria = formData.get("categoria") as string || selectedProduct?.categoria
 
     if (!nombre || !marca || !modelo || !categoria) {
-      toast({
+      showError({
         title: "Campos requeridos",
         description: "Por favor, completa todos los campos obligatorios (Nombre, Marca, Modelo y Categoría).",
-        variant: "destructive",
       })
       setIsLoading(false)
       // Cambiar a la pestaña básica si hay campos faltantes
@@ -736,7 +774,7 @@ export default function InventarioPage() {
             setShowImportProgress(false)
             setIsImportModalOpen(false)
             appDispatch({ type: 'UPDATE_INVENTORY', payload: state.inventoryData }) // Trigger re-render with current data
-            toast({
+            showSuccess({
               title: "Importación completada",
               description: "Se han importado 25 productos exitosamente.",
             })
@@ -760,10 +798,9 @@ export default function InventarioPage() {
   const executeRetirement = () => {
     // Validar que se haya seleccionado un motivo
     if (!retirementDetails.reason) {
-      toast({
+      showError({
         title: "Error",
         description: "Debe seleccionar un motivo para el retiro.",
-        variant: "destructive"
       })
       return
     }
@@ -784,7 +821,7 @@ export default function InventarioPage() {
         },
       }
     })
-    toast({
+    showSuccess({
       title: "Producto retirado",
       description: `${selectedProduct?.nombre} ha sido marcado como retirado.`,
     })
@@ -957,10 +994,9 @@ export default function InventarioPage() {
   // Función para ejecutar el cambio de estado a mantenimiento
   const executeMaintenanceChange = () => {
     if (!maintenanceDetails.provider.trim()) {
-      toast({
+      showError({
         title: "Error",
         description: "Debe especificar un proveedor de mantenimiento.",
-        variant: "destructive"
       })
       return
     }
@@ -984,7 +1020,7 @@ export default function InventarioPage() {
       }
     })
 
-    toast({
+    showSuccess({
       title: "Producto en mantenimiento",
       description: "El producto ha sido marcado como en mantenimiento.",
     })
@@ -995,10 +1031,9 @@ export default function InventarioPage() {
   // Función simulada para subir documentos
   const handleFileUpload = () => {
     if (!selectedFiles || selectedFiles.length === 0) {
-      toast({
+      showError({
         title: "Error",
         description: "Seleccione al menos un archivo para subir.",
-        variant: "destructive"
       });
       return;
     }
@@ -1018,7 +1053,7 @@ export default function InventarioPage() {
       setSelectedFiles(null);
       setUploadingFiles(false);
 
-      toast({
+      showSuccess({
         title: "Documentos subidos",
         description: `Se han subido ${newDocs.length} documento(s) correctamente.`
       });
@@ -1030,6 +1065,21 @@ export default function InventarioPage() {
     // Aquí podrías realizar alguna acción cuando se refresca el inventario
     // Por ejemplo, actualizar filtros, resetear selecciones, etc.
   }, [localState.lastRefresh]);
+
+  const allCategories = useMemo(() => {
+    const categories = new Set((state.inventoryData || []).map((p) => p.categoria).filter(Boolean))
+    return ["Todas", ...Array.from(categories).sort()]
+  }, [state.inventoryData])
+
+  const allBrands = useMemo(() => {
+    const brands = new Set((state.inventoryData || []).map((p) => p.marca).filter(Boolean))
+    return ["Todas", ...Array.from(brands).sort()]
+  }, [state.inventoryData])
+
+  const allStatuses = useMemo(() => {
+    const statuses = new Set((state.inventoryData || []).map((p) => p.estado).filter(Boolean))
+    return ["Todos", ...Array.from(statuses).sort()]
+  }, [state.inventoryData])
 
   if (sortedAndFilteredData.length === 0 && !searchTerm && !filterCategoria && !filterMarca && !filterEstado) {
     return (
@@ -1074,6 +1124,31 @@ export default function InventarioPage() {
 
     setVisibleColumns((prev) => (checked ? [...prev, columnId] : prev.filter((id) => id !== columnId)))
   }
+
+  const handleViewModeChange = (mode: "table" | "cards") => {
+    if (viewMode !== mode) {
+      setViewMode(mode)
+    }
+  }
+
+  const filteredProducts = useMemo(() => {
+    return (state.inventoryData || []).filter((product) => {
+      const matchesSearch = searchTerm === "" || (
+        (product.nombre?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (product.marca?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (product.modelo?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (product.numeroSerie && product.numeroSerie.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (product.proveedor && product.proveedor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (product.contratoId && product.contratoId.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+
+      const matchesCategoria = !filterCategoria || filterCategoria === "all" || product.categoria === filterCategoria
+      const matchesMarca = !filterMarca || filterMarca === "all" || product.marca === filterMarca
+      const matchesEstado = !filterEstado || filterEstado === "all" || product.estado === filterEstado
+
+      return matchesSearch && matchesCategoria && matchesMarca && matchesEstado
+    })
+  }, [searchTerm, filterCategoria, filterMarca, filterEstado, state.inventoryData])
 
   return (
     <TooltipProvider>
@@ -1131,7 +1206,7 @@ export default function InventarioPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todas</SelectItem>
-                          {state.categorias.map((categoria) => (
+                          {allCategories.map((categoria) => (
                             <SelectItem key={categoria} value={categoria}>
                               {categoria}
                             </SelectItem>
@@ -1147,7 +1222,7 @@ export default function InventarioPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todas</SelectItem>
-                          {state.marcas.map((marca) => (
+                          {allBrands.map((marca) => (
                             <SelectItem key={marca} value={marca}>
                               {marca}
                             </SelectItem>
@@ -1163,12 +1238,11 @@ export default function InventarioPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="Disponible">Disponible</SelectItem>
-                          <SelectItem value="Prestado">Prestado</SelectItem>
-                          <SelectItem value="Asignado">Asignado</SelectItem>
-                          <SelectItem value="En Mantenimiento">En Mantenimiento</SelectItem>
-                          <SelectItem value="Retirado">Retirado</SelectItem>
-                          <SelectItem value="PENDIENTE_DE_RETIRO">Pendiente de Retiro</SelectItem>
+                          {allStatuses.map((estado) => (
+                            <SelectItem key={estado} value={estado}>
+                              {estado}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1211,7 +1285,7 @@ export default function InventarioPage() {
                 variant={viewMode === "table" ? "default" : "ghost"}
                 size="sm"
                 className={`rounded-none ${viewMode === "table" ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => setViewMode("table")}
+                onClick={() => handleViewModeChange("table")}
               >
                 <LayoutList className="h-4 w-4 mr-1" />
                 Tabla
@@ -1220,7 +1294,7 @@ export default function InventarioPage() {
                 variant={viewMode === "cards" ? "default" : "ghost"}
                 size="sm"
                 className={`rounded-none ${viewMode === "cards" ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => setViewMode("cards")}
+                onClick={() => handleViewModeChange("cards")}
               >
                 <LayoutGrid className="h-4 w-4 mr-1" />
                 Tarjetas

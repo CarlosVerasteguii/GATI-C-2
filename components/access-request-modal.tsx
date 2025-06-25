@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, UserPlus } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 
@@ -32,7 +32,6 @@ export function AccessRequestModal({ open, onOpenChange }: AccessRequestModalPro
     email: "",
     justification: "",
   })
-  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,9 +51,9 @@ export function AccessRequestModal({ open, onOpenChange }: AccessRequestModalPro
         estado: "Pendiente" as const,
       }
       updateSolicitudes((prev) => [...(prev || []), newRequest])
-      toast({
+      showSuccess({
         title: "Solicitud Enviada",
-        description: "Tu solicitud de acceso ha sido enviada para revisión.",
+        description: "Tu solicitud de acceso ha sido enviada para revisión."
       })
       addRecentActivity({
         type: "Solicitud de Acceso",

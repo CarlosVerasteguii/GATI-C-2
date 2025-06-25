@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, PackageMinus, HelpCircle } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -36,7 +36,7 @@ export function QuickRetireModal({ open, onOpenChange }: QuickRetireModalProps) 
     retireReason: "",
     notes: "",
   })
-  const { toast } = useToast()
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -44,10 +44,9 @@ export function QuickRetireModal({ open, onOpenChange }: QuickRetireModalProps) 
 
   const handleSubmit = async () => {
     if (!formData.productIdentifier || !formData.retireReason || (!isSerializedRetirement && !formData.quantity)) {
-      toast({
+      showError({
         title: "Campos requeridos",
-        description: "Por favor, completa todos los campos obligatorios.",
-        variant: "destructive",
+        description: "Por favor, completa todos los campos obligatorios."
       })
       return
     }
@@ -68,10 +67,9 @@ export function QuickRetireModal({ open, onOpenChange }: QuickRetireModalProps) 
       quantityToRetire = productsToRetire.length
 
       if (productsToRetire.length !== serials.length) {
-        toast({
+        showError({
           title: "Error de Números de Serie",
-          description: "Algunos números de serie no fueron encontrados o no están disponibles.",
-          variant: "destructive",
+          description: "Algunos números de serie no fueron encontrados o no están disponibles."
         })
         setIsLoading(false)
         return
@@ -86,10 +84,9 @@ export function QuickRetireModal({ open, onOpenChange }: QuickRetireModalProps) 
       quantityToRetire = Number.parseInt(formData.quantity)
 
       if (!availableProduct || availableProduct.cantidad < quantityToRetire) {
-        toast({
+        showError({
           title: "Error de Cantidad",
-          description: `Producto no encontrado o cantidad insuficiente. Disponibles: ${availableProduct?.cantidad || 0}`,
-          variant: "destructive",
+          description: `Producto no encontrado o cantidad insuficiente. Disponibles: ${availableProduct?.cantidad || 0}`
         })
         setIsLoading(false)
         return
@@ -126,9 +123,9 @@ export function QuickRetireModal({ open, onOpenChange }: QuickRetireModalProps) 
           },
         ],
       })
-      toast({
+      showInfo({
         title: "Solicitud de Retiro Enviada",
-        description: "Tu solicitud de retiro rápido ha sido enviada para aprobación y procesamiento.",
+        description: "Tu solicitud de retiro rápido ha sido enviada para aprobación y procesamiento."
       })
       addRecentActivity({
         type: "Creación de Tarea",

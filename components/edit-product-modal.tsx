@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showWarning } from "@/hooks/use-toast"
 import { Loader2, Edit, HelpCircle, ExternalLink, Trash2 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -53,7 +53,7 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
     garantia: product?.garantia || "",
     vidaUtil: product?.vidaUtil || "",
   })
-  const { toast } = useToast()
+
 
   // Documentos adjuntos (simulados)
   const [attachedDocuments, setAttachedDocuments] = useState<{ id: string, name: string, url: string, uploadDate: string }[]>(
@@ -99,14 +99,38 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+
+    // Validación inteligente en tiempo real
+    if (field === "serialNumber" && value.trim() && hasSerialNumber) {
+      // Verificar si el número de serie ya existe (excluyendo el producto actual)
+      const existingProduct = state.inventoryData.find(
+        (item) => item.numeroSerie === value.trim() && item.id !== product.id
+      )
+
+      if (existingProduct) {
+        showWarning({
+          title: "Número de serie duplicado",
+          description: `Este número ya pertenece a "${existingProduct.nombre}"`
+        })
+      }
+    }
+
+    if (field === "costo" && value) {
+      const cost = parseFloat(value)
+      if (isNaN(cost) || cost < 0) {
+        showWarning({
+          title: "Costo inválido",
+          description: "El costo debe ser un número positivo"
+        })
+      }
+    }
   }
 
   const handleFileUpload = () => {
     if (!selectedFiles || selectedFiles.length === 0) {
-      toast({
+      showError({
         title: "Error",
-        description: "Seleccione al menos un archivo para subir.",
-        variant: "destructive"
+        description: "Seleccione al menos un archivo para subir."
       });
       return;
     }
@@ -126,7 +150,7 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
       setSelectedFiles(null);
       setUploadingFiles(false);
 
-      toast({
+      showSuccess({
         title: "Documentos subidos",
         description: `Se han subido ${newDocs.length} documento(s) correctamente.`
       });
@@ -143,10 +167,9 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
       if (!formData.model) missingFields.push("Modelo");
       if (!formData.category) missingFields.push("Categoría");
 
-      toast({
+      showError({
         title: "Campos requeridos",
-        description: `Por favor, completa los siguientes campos obligatorios: ${missingFields.join(", ")}.`,
-        variant: "destructive",
+        description: `Por favor, completa los siguientes campos obligatorios: ${missingFields.join(", ")}.`
       });
 
       // Cambiar a la pestaña básica si hay campos faltantes
@@ -200,9 +223,9 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
           },
         ],
       })
-      toast({
+      showSuccess({
         title: "Solicitud de Edición Enviada",
-        description: "Tu solicitud de edición ha sido enviada para aprobación y procesamiento.",
+        description: "Tu solicitud de edición ha sido enviada para aprobación y procesamiento."
       })
       addRecentActivity({
         type: "Creación de Tarea",

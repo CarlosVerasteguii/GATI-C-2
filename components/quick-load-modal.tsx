@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showInfo } from "@/hooks/use-toast"
 import { Loader2, PackagePlus, HelpCircle } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -68,7 +68,7 @@ export function QuickLoadModal({
     fechaAdquisicion: initialFechaAdquisicion,
     contratoId: initialContratoId,
   })
-  const { toast } = useToast()
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -80,10 +80,9 @@ export function QuickLoadModal({
       (!hasSerialNumber && !formData.quantity) ||
       (hasSerialNumber && !formData.serialNumbers)
     ) {
-      toast({
+      showError({
         title: "Campos requeridos",
-        description: "Por favor, completa todos los campos obligatorios.",
-        variant: "destructive",
+        description: "Por favor, completa todos los campos obligatorios."
       })
       return
     }
@@ -92,15 +91,16 @@ export function QuickLoadModal({
 
     const serialsArray = hasSerialNumber
       ? formData.serialNumbers
-          .split("\n")
-          .filter(Boolean)
-          .map((s) => s.trim())
+        .split("\n")
+        .filter(Boolean)
+        .map((s) => s.trim())
       : []
     const quantity = hasSerialNumber ? serialsArray.length : Number.parseInt(formData.quantity)
 
     // Simulate task creation
     setTimeout(() => {
       addPendingTask({
+        id: Math.floor(Math.random() * 10000),
         type: "CARGA",
         creationDate: new Date().toISOString(),
         createdBy: state.user?.nombre || "Usuario Rápido", // Use logged in user or default
@@ -126,9 +126,9 @@ export function QuickLoadModal({
           },
         ],
       })
-      toast({
+      showInfo({
         title: "Solicitud de Carga Enviada",
-        description: "Tu solicitud de carga rápida ha sido enviada para aprobación y procesamiento.",
+        description: "Tu solicitud de carga rápida ha sido enviada para aprobación y procesamiento."
       })
       addRecentActivity({
         type: "Creación de Tarea",

@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, UserPlus } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { ConfirmationDialogForEditor } from "./confirmation-dialog-for-editor"
@@ -38,9 +38,16 @@ export function BulkAssignModal({ open, onOpenChange, selectedProducts = [], onS
   const [selectedUser, setSelectedUser] = useState("")
   const [notes, setNotes] = useState("")
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
-  const { toast } = useToast()
+
 
   const executeBulkAssign = () => {
+    // Toast de progreso con contexto del usuario
+    const assignedUserName = usuarios.find((u) => u.id.toString() === selectedUser)?.nombre || "Usuario"
+    showInfo({
+      title: "Procesando asignación masiva...",
+      description: `Asignando ${selectedProducts.length} productos a ${assignedUserName}`
+    })
+
     // Simulate assignment
     setTimeout(() => {
       setIsLoading(false)
@@ -107,9 +114,9 @@ export function BulkAssignModal({ open, onOpenChange, selectedProducts = [], onS
       updateInventory(updatedInventory)
       updateAsignados([...state.asignadosData, ...assignedItems])
 
-      toast({
+      showSuccess({
         title: "Asignación masiva completada",
-        description: `${selectedProducts.length} productos han sido asignados exitosamente.`,
+        description: `${selectedProducts.length} productos asignados a ${assignedUserName}`,
       })
       addRecentActivity({
         type: "Asignación Masiva",
@@ -159,7 +166,7 @@ export function BulkAssignModal({ open, onOpenChange, selectedProducts = [], onS
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
       description: "Tu asignación masiva ha sido enviada a un administrador para aprobación.",
     })

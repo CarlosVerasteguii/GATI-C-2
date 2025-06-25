@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, Calendar } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { ConfirmationDialogForEditor } from "./confirmation-dialog-for-editor"
@@ -33,9 +33,15 @@ export function BulkLendModal({ open, onOpenChange, selectedProducts, onSuccess 
   const [returnDate, setReturnDate] = useState("")
   const [notes, setNotes] = useState("")
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
-  const { toast } = useToast()
+
 
   const executeBulkLend = () => {
+    // Toast de progreso con contexto completo
+    showInfo({
+      title: "Procesando préstamo masivo...",
+      description: `Prestando ${selectedProducts.length} productos a ${userName}`
+    })
+
     // Simular préstamo masivo
     setTimeout(() => {
       setIsLoading(false)
@@ -102,9 +108,11 @@ export function BulkLendModal({ open, onOpenChange, selectedProducts, onSuccess 
       updateInventory(updatedInventory)
       updatePrestamos([...state.prestamosData, ...lentItems])
 
-      toast({
+      // Toast mejorado con fecha de devolución
+      const fechaFormateada = new Date(returnDate).toLocaleDateString('es-ES')
+      showSuccess({
         title: "Préstamo masivo completado",
-        description: `${selectedProducts.length} productos han sido prestados exitosamente.`,
+        description: `${selectedProducts.length} productos prestados hasta ${fechaFormateada}`
       })
       addRecentActivity({
         type: "Préstamo Masivo",
@@ -157,9 +165,9 @@ export function BulkLendModal({ open, onOpenChange, selectedProducts, onSuccess 
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
-      description: "Tu préstamo masivo ha sido enviado a un administrador para aprobación.",
+      description: "Tu préstamo masivo ha sido enviado a un administrador para aprobación."
     })
     onOpenChange(false)
     setUserName("")

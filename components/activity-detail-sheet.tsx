@@ -1,12 +1,14 @@
 "use client"
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Info, History, FileText } from "lucide-react"
+import { Info, History, FileText, Calendar, Package, User, Clock, Tag } from "lucide-react"
 import { StatusBadge } from "@/components/status-badge"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 interface ActivityDetailSheetProps {
   open: boolean
@@ -65,6 +67,34 @@ const renderDiff = (oldData: any, newData: any) => {
   )
 }
 
+// Función para formatear fechas con manejo de errores
+const formatDate = (dateString: string) => {
+  try {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return format(date, "dd/MM/yyyy", { locale: es });
+  } catch (error) {
+    console.error("Error al formatear fecha:", error);
+    return "Fecha inválida";
+  }
+};
+
+// Función para formatear fechas con hora con manejo de errores
+const formatDateTime = (dateString: string) => {
+  try {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) return "Fecha inválida";
+    return format(date, "dd/MM/yyyy, HH:mm:ss", { locale: es });
+  } catch (error) {
+    console.error("Error al formatear fecha y hora:", error);
+    return "Fecha inválida";
+  }
+};
+
 export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDetailSheetProps) {
   if (!activity) return null
 
@@ -118,7 +148,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
             <h3 className="text-lg font-semibold mb-2">Detalles de Asignación</h3>
             {renderDetail("Asignado a", activity.details.assignedTo)}
             {renderDetail("Departamento", activity.details.department)}
-            {renderDetail("Fecha de Asignación", activity.details.assignmentDate)}
+            {renderDetail("Fecha de Asignación", formatDate(activity.details.assignmentDate))}
             {renderDetail("Asignado Por", activity.details.assignedBy || activity.requestedBy)}
             {renderDetail("Notas", activity.details.notes)}
             <h4 className="font-semibold mt-4 mb-2">Artículos Asignados:</h4>
@@ -137,8 +167,8 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
           <>
             <h3 className="text-lg font-semibold mb-2">Detalles de Préstamo</h3>
             {renderDetail("Prestado a", activity.details.lentTo)}
-            {renderDetail("Fecha de Préstamo", activity.details.loanDate)}
-            {renderDetail("Fecha de Devolución", activity.details.returnDate)}
+            {renderDetail("Fecha de Préstamo", formatDate(activity.details.loanDate))}
+            {renderDetail("Fecha de Devolución", formatDate(activity.details.returnDate))}
             {renderDetail("Prestado Por", activity.details.lentBy || activity.requestedBy)}
             {renderDetail("Notas", activity.details.notes)}
             <h4 className="font-semibold mt-4 mb-2">Artículos Prestados:</h4>
@@ -157,7 +187,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
           <>
             <h3 className="text-lg font-semibold mb-2">Detalles de Devolución</h3>
             {renderDetail("Devuelto por", activity.details.returnedBy)}
-            {renderDetail("Fecha de Devolución", activity.details.returnDate)}
+            {renderDetail("Fecha de Devolución", formatDate(activity.details.returnDate))}
             {renderDetail("Recibido Por", activity.details.receivedBy || activity.requestedBy)}
             {renderDetail("Condición al Devolver", activity.details.condition)}
             <h4 className="font-semibold mt-4 mb-2">Artículos Devueltos:</h4>
@@ -188,7 +218,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
             {renderDetail("ID de Tarea", activity.details.taskId)}
             {renderDetail("Tipo de Tarea", activity.details.taskType)}
             {renderDetail("Creado Por", activity.details.createdBy || activity.requestedBy)}
-            {renderDetail("Fecha de Creación", activity.details.creationDate)}
+            {renderDetail("Fecha de Creación", formatDate(activity.details.creationDate))}
             {activity.details.productName && renderDetail("Producto", activity.details.productName)}
             {activity.details.quantity && renderDetail("Cantidad", activity.details.quantity)}
             {activity.details.serialNumbers &&
@@ -213,7 +243,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
                   {activity.details.auditLog.map((log: any, index: number) => (
                     <Card key={index} className="p-3">
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(log.dateTime), "dd/MM/yyyy HH:mm")}
+                        {formatDateTime(log.dateTime)}
                       </p>
                       <p className="text-sm font-medium">
                         {log.event} por {log.user}
@@ -260,7 +290,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[400px] sm:w-[540px] flex flex-col">
+      <SheetContent className="w-[400px] sm:w-[540px] md:w-[680px] flex flex-col">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Info className="h-5 w-5" />
@@ -281,8 +311,13 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
                 <dl className="space-y-2">
                   {renderDetail("Tipo de Actividad", <StatusBadge status={activity.type} />)}
                   {renderDetail("Descripción", activity.description)}
-                  {renderDetail("Fecha y Hora", activity.date)}
-                  {activity.requestedBy && renderDetail("Registrado por", activity.requestedBy)}
+                  {renderDetail("Fecha y Hora", formatDateTime(activity.date))}
+                  {activity.requestedBy && renderDetail("Registrado por", (
+                    <span className="flex items-center gap-1">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      {activity.requestedBy}
+                    </span>
+                  ))}
                   {activity.status && renderDetail("Estado de Solicitud", <StatusBadge status={activity.status} />)}
                 </dl>
               </CardContent>
@@ -296,7 +331,7 @@ export function ActivityDetailSheet({ open, onOpenChange, activity }: ActivityDe
                     Detalles Específicos
                   </CardTitle>
                 </CardHeader>
-                <CardContent>{renderActivityDetails()}</CardContent>
+                <CardContent className="space-y-4">{renderActivityDetails()}</CardContent>
               </Card>
             )}
           </div>

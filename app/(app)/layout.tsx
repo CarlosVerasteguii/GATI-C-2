@@ -1,17 +1,70 @@
-import type React from "react"
-import AppLayout from "@/components/app-layout" // Importa AppLayout como default export
+"use client"
 
-export default function AppGroupedLayout({
+import { useEffect, useState } from "react"
+import { AppLayout } from "@/components/app-layout"
+import { showInfo, showWarning, showSuccess } from "@/hooks/use-toast"
+
+export default function MainAppLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
-  return (
-    <>
-      {/* DEBUG: Si ves este texto en la esquina superior izquierda, el layout del grupo se está aplicando. */}
-      {/* Si NO lo ves en /asignados, /tareas-pendientes, /configuracion, el problema es la ruta. */}
-      {/* <div style={{ position: 'fixed', top: 0, left: 0, background: 'red', color: 'white', padding: '5px', zIndex: 9999 }}>DEBUG: App Layout Group Applied</div> */}
-      <AppLayout>{children}</AppLayout>
-    </>
-  )
+}) {
+  const [isOnline, setIsOnline] = useState(true)
+
+  useEffect(() => {
+    // Simular estados de conexión ocasionales para demostrar toasts del sistema
+    const simulateConnectionStates = () => {
+      const intervals = [
+        // Sincronización automática cada 30 segundos
+        setInterval(() => {
+          showInfo({
+            title: "Sincronizando...",
+            description: "Actualizando datos del servidor",
+            duration: 2000
+          })
+
+          // Simular sincronización completada
+          setTimeout(() => {
+            showSuccess({
+              title: "Sincronización completada",
+              description: "Datos actualizados correctamente",
+              duration: 2000
+            })
+          }, 1500)
+        }, 30000),
+
+        // Simular pérdida de conexión ocasional (muy raro)
+        setInterval(() => {
+          if (Math.random() < 0.1) { // 10% de probabilidad cada 60 segundos
+            setIsOnline(false)
+            showWarning({
+              title: "Conexión inestable",
+              description: "Reintentando conexión automáticamente...",
+              duration: 3000
+            })
+
+            // Restaurar conexión después de 3 segundos
+            setTimeout(() => {
+              setIsOnline(true)
+              showSuccess({
+                title: "Conexión restaurada",
+                description: "Vuelves a estar conectado al servidor",
+                duration: 2000
+              })
+            }, 3000)
+          }
+        }, 60000)
+      ]
+
+      return () => {
+        intervals.forEach(interval => clearInterval(interval))
+      }
+    }
+
+    const cleanup = simulateConnectionStates()
+
+    return cleanup
+  }, [])
+
+  return <AppLayout>{children}</AppLayout>
 }

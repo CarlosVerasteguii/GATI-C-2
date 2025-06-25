@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, Trash2 } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { ConfirmationDialogForEditor } from "./confirmation-dialog-for-editor"
@@ -29,9 +29,15 @@ export function BulkRetireModal({ open, onOpenChange, selectedProducts, onSucces
   const [isLoading, setIsLoading] = useState(false)
   const [notes, setNotes] = useState("")
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
-  const { toast } = useToast()
+
 
   const executeBulkRetire = () => {
+    // Toast de progreso inmediato
+    showInfo({
+      title: "Procesando retiro masivo...",
+      description: `Retirando ${selectedProducts.length} productos del inventario`
+    })
+
     // Simular retiro masivo
     setTimeout(() => {
       setIsLoading(false)
@@ -60,9 +66,9 @@ export function BulkRetireModal({ open, onOpenChange, selectedProducts, onSucces
       })
       updateInventory(updatedInventory)
 
-      toast({
+      showSuccess({
         title: "Retiro masivo completado",
-        description: `${selectedProducts.length} productos han sido marcados como retirados.`,
+        description: `${selectedProducts.length} productos retirados del inventario`
       })
       addRecentActivity({
         type: "Retiro Masivo",
@@ -108,9 +114,9 @@ export function BulkRetireModal({ open, onOpenChange, selectedProducts, onSucces
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
-      description: "Tu retiro masivo ha sido enviado a un administrador para aprobación.",
+      description: "Tu retiro masivo ha sido enviado a un administrador para aprobación."
     })
     onOpenChange(false)
     setNotes("")

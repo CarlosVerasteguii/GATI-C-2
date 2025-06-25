@@ -1,13 +1,5 @@
 "use client"
 
-import { DropdownMenuSubContent } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuPortal } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuSub } from "@/components/ui/dropdown-menu"
-
 import { useState, useMemo } from "react"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -19,17 +11,53 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuSubTrigger,
+  DropdownMenuSub,
 } from "@/components/ui/dropdown-menu"
-import { Search, Filter, ArrowUpDown } from "lucide-react"
+import { Search, Filter, ArrowUpDown, AlertTriangle } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { StatusBadge } from "@/components/status-badge"
 import { ConfirmationDialogForEditor } from "@/components/confirmation-dialog-for-editor"
-import { useToast } from "@/hooks/use-toast"
+import { showSuccess, showInfo } from "@/hooks/use-toast"
 import { ActionMenu } from "@/components/action-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+
+// Definición de tipos
+interface SortConfig {
+  key: string
+  direction: "ascending" | "descending"
+}
+
+interface PrestamoItemWithDetails {
+  id: number
+  articuloId: number
+  articulo: string
+  numeroSerie: string | null
+  prestadoA: string
+  fechaPrestamo: string
+  fechaDevolucion: string
+  estado: "Activo" | "Devuelto" | "Vencido"
+  diasRestantes: number
+  notas?: string
+  registradoPor?: string
+  categoria?: string
+  marca?: string
+}
 
 export default function PrestamosPage() {
-  const { state, dispatch, addRecentActivity } = useApp()
-  const { toast } = useToast()
+  const { state, dispatch, addRecentActivity, updateLoanStatus } = useApp()
+
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filters, setFilters] = useState({
@@ -37,26 +65,28 @@ export default function PrestamosPage() {
     categoria: "Todas",
     marca: "Todas",
   })
-  const [sortConfig, setSortConfig] = useState<{
-    key: string
-    direction: "ascending" | "descending"
-  } | null>(null)
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>(null)
   const [isReturnConfirmOpen, setIsReturnConfirmOpen] = useState(false)
-  const [loanToReturn, setLoanToReturn] = useState<any>(null)
+  const [loanToReturn, setLoanToReturn] = useState<PrestamoItemWithDetails | null>(null)
+  const [isBulkLoanModalOpen, setIsBulkLoanModalOpen] = useState(false)
 
-  const handleReturnLoan = (loan: any) => {
+  // Función segura para acceder a propiedades que podrían ser undefined
+  const safeAccess = <T, K extends keyof T>(obj: T | undefined | null, key: K): T[K] | undefined => {
+    return obj ? obj[key] : undefined
+  }
+
+  const handleReturnLoan = (loan: PrestamoItemWithDetails) => {
     setLoanToReturn(loan)
     setIsReturnConfirmOpen(true)
   }
 
   const confirmReturn = () => {
     if (loanToReturn) {
-      dispatch({ type: "RETURN_LOAN", payload: loanToReturn.id })
+      updateLoanStatus(loanToReturn.id, "Devuelto")
       addRecentActivity({
         type: "Devolución de Préstamo",
-        description: `Producto ${loanToReturn.articulo} (N/S: ${
-          loanToReturn.numeroSerie || "N/A"
-        }) devuelto por ${loanToReturn.prestadoA}.`,
+        description: `Producto ${loanToReturn.articulo} (N/S: ${loanToReturn.numeroSerie || "N/A"
+          }) devuelto por ${loanToReturn.prestadoA}.`,
         date: new Date().toLocaleString(),
         details: {
           loanId: loanToReturn.id,
@@ -64,7 +94,7 @@ export default function PrestamosPage() {
           lentTo: loanToReturn.prestadoA,
         },
       })
-      toast({
+      showSuccess({
         title: "Préstamo Devuelto",
         description: `El producto ${loanToReturn.articulo} ha sido devuelto al inventario.`,
       })
@@ -74,29 +104,33 @@ export default function PrestamosPage() {
   }
 
   const filteredLoans = useMemo(() => {
-    const filtered = state.prestamosData.filter((loan) => {
+    return (state.prestamosData || []).filter((loan) => {
       const matchesSearch =
-        loan.articulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.numeroSerie?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.prestadoA?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.estado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.fechaPrestamo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        loan.fechaDevolucion?.toLowerCase().includes(searchTerm.toLowerCase())
+        safeAccess(loan, "articulo")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        safeAccess(loan, "numeroSerie")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        safeAccess(loan, "prestadoA")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        safeAccess(loan, "estado")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        safeAccess(loan, "fechaPrestamo")?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        safeAccess(loan, "fechaDevolucion")?.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesEstado = filters.estado === "Todos" || loan.estado === filters.estado
-      // Note: Prestamos data might not have 'categoria' or 'marca' directly,
-      // you might need to link back to inventoryData if these filters are critical.
+
+      // Buscar información adicional del producto en el inventario
+      const inventoryItem = state.inventoryData.find(item => item.id === loan.articuloId)
+      const categoria = inventoryItem?.categoria || ""
+      const marca = inventoryItem?.marca || ""
+
       const matchesCategoria =
         filters.categoria === "Todas" ||
-        (loan.categoria && loan.categoria.toLowerCase() === filters.categoria.toLowerCase())
+        categoria.toLowerCase() === filters.categoria.toLowerCase()
+
       const matchesMarca =
-        filters.marca === "Todas" || (loan.marca && loan.marca.toLowerCase() === filters.marca.toLowerCase())
+        filters.marca === "Todas" ||
+        marca.toLowerCase() === filters.marca.toLowerCase()
 
       return matchesSearch && matchesEstado && matchesCategoria && matchesMarca
     })
-
-    return filtered
-  }, [state.prestamosData, searchTerm, filters])
+  }, [state.prestamosData, state.inventoryData, searchTerm, filters])
 
   const sortedLoans = useMemo(() => {
     if (!sortConfig) {
@@ -104,8 +138,8 @@ export default function PrestamosPage() {
     }
 
     const sorted = [...filteredLoans].sort((a, b) => {
-      const aValue = a[sortConfig.key] || ""
-      const bValue = b[sortConfig.key] || ""
+      const aValue = safeAccess(a, sortConfig.key as keyof typeof a) || ""
+      const bValue = safeAccess(b, sortConfig.key as keyof typeof b) || ""
 
       if (aValue < bValue) {
         return sortConfig.direction === "ascending" ? -1 : 1
@@ -126,6 +160,10 @@ export default function PrestamosPage() {
     setSortConfig({ key, direction })
   }
 
+  const handleFilterChange = (filterType: keyof typeof filters, value: string) => {
+    setFilters({ ...filters, [filterType]: value })
+  }
+
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -136,26 +174,99 @@ export default function PrestamosPage() {
     return <ArrowUpDown className="ml-2 h-4 w-4" />
   }
 
+  // Obtener categorías y marcas desde el inventario para los filtros
   const allCategories = useMemo(() => {
-    const categories = new Set(state.prestamosData.map((p) => p.categoria).filter(Boolean))
+    const categories = new Set((state.inventoryData || []).map((item) => item.categoria).filter(Boolean))
     return ["Todas", ...Array.from(categories).sort()]
-  }, [state.prestamosData])
+  }, [state.inventoryData])
 
   const allBrands = useMemo(() => {
-    const brands = new Set(state.prestamosData.map((p) => p.marca).filter(Boolean))
+    const brands = new Set((state.inventoryData || []).map((item) => item.marca).filter(Boolean))
     return ["Todas", ...Array.from(brands).sort()]
-  }, [state.prestamosData])
+  }, [state.inventoryData])
 
   const allStatuses = useMemo(() => {
-    const statuses = new Set(state.prestamosData.map((p) => p.estado).filter(Boolean))
+    const statuses = new Set((state.prestamosData || []).map((p) => p.estado).filter(Boolean))
     return ["Todos", ...Array.from(statuses).sort()]
   }, [state.prestamosData])
+
+  // Calcular préstamos vencidos
+  const vencidosCount = useMemo(() => {
+    return (state.prestamosData || []).filter(loan => loan.estado === "Vencido").length
+  }, [state.prestamosData])
+
+  // Función para renderizar el indicador de días restantes
+  const renderDiasRestantes = (diasRestantes: number, estado: string) => {
+    if (estado === "Devuelto") {
+      return <span className="text-muted-foreground">Devuelto</span>
+    }
+
+    if (diasRestantes < 0) {
+      return (
+        <div className="flex items-center gap-1 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <span>Vencido por {Math.abs(diasRestantes)} días</span>
+        </div>
+      )
+    }
+
+    let color = "bg-green-500"
+    if (diasRestantes <= 3) color = "bg-red-500"
+    else if (diasRestantes <= 7) color = "bg-amber-500"
+
+    return (
+      <div className="w-full space-y-1">
+        <div className="flex justify-between text-xs">
+          <span>{diasRestantes} días</span>
+        </div>
+        <Progress value={(diasRestantes / 30) * 100} className={`h-2 ${color}`} />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Préstamos</h1>
-        <Button onClick={() => console.log("Prestar Masivo clicked")}>Prestar Masivo</Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Préstamos</h1>
+          {vencidosCount > 0 && (
+            <div className="mt-1 flex items-center text-sm text-destructive">
+              <AlertTriangle className="mr-1 h-4 w-4" />
+              {vencidosCount} préstamos vencidos
+            </div>
+          )}
+        </div>
+
+        <Dialog open={isBulkLoanModalOpen} onOpenChange={setIsBulkLoanModalOpen}>
+          <DialogTrigger asChild>
+            <Button>Prestar Masivo</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Préstamo Masivo</DialogTitle>
+              <DialogDescription>
+                Seleccione los productos que desea prestar y complete la información del préstamo.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              {/* Aquí iría el formulario de préstamo masivo */}
+              <p className="text-sm text-muted-foreground">
+                Funcionalidad en desarrollo. Esta característica permitirá prestar múltiples artículos
+                a una misma persona o entidad en una sola operación.
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsBulkLoanModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled>
+                Confirmar Préstamo
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center gap-2">
@@ -187,7 +298,7 @@ export default function PrestamosPage() {
                     <DropdownMenuCheckboxItem
                       key={status}
                       checked={filters.estado === status}
-                      onCheckedChange={() => setFilters({ ...filters, estado: status })}
+                      onCheckedChange={() => handleFilterChange("estado", status)}
                     >
                       {status}
                     </DropdownMenuCheckboxItem>
@@ -203,7 +314,7 @@ export default function PrestamosPage() {
                     <DropdownMenuCheckboxItem
                       key={category}
                       checked={filters.categoria === category}
-                      onCheckedChange={() => setFilters({ ...filters, categoria: category })}
+                      onCheckedChange={() => handleFilterChange("categoria", category)}
                     >
                       {category}
                     </DropdownMenuCheckboxItem>
@@ -219,7 +330,7 @@ export default function PrestamosPage() {
                     <DropdownMenuCheckboxItem
                       key={brand}
                       checked={filters.marca === brand}
-                      onCheckedChange={() => setFilters({ ...filters, marca: brand })}
+                      onCheckedChange={() => handleFilterChange("marca", brand)}
                     >
                       {brand}
                     </DropdownMenuCheckboxItem>
@@ -231,41 +342,39 @@ export default function PrestamosPage() {
         </DropdownMenu>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead onClick={() => requestSort("articulo")} className="cursor-pointer">
-                Artículo
-                {getSortIcon("articulo")}
+                Artículo {getSortIcon("articulo")}
               </TableHead>
               <TableHead onClick={() => requestSort("numeroSerie")} className="cursor-pointer">
-                Número de Serie
-                {getSortIcon("numeroSerie")}
+                Número de Serie {getSortIcon("numeroSerie")}
               </TableHead>
               <TableHead onClick={() => requestSort("prestadoA")} className="cursor-pointer">
-                Prestado A{getSortIcon("prestadoA")}
+                Prestado A {getSortIcon("prestadoA")}
               </TableHead>
               <TableHead onClick={() => requestSort("fechaPrestamo")} className="cursor-pointer">
-                Fecha Préstamo
-                {getSortIcon("fechaPrestamo")}
+                Fecha Préstamo {getSortIcon("fechaPrestamo")}
               </TableHead>
               <TableHead onClick={() => requestSort("fechaDevolucion")} className="cursor-pointer">
-                Fecha Devolución
-                {getSortIcon("fechaDevolucion")}
+                Fecha Devolución {getSortIcon("fechaDevolucion")}
+              </TableHead>
+              <TableHead onClick={() => requestSort("diasRestantes")} className="cursor-pointer">
+                Días Restantes {getSortIcon("diasRestantes")}
               </TableHead>
               <TableHead onClick={() => requestSort("estado")} className="cursor-pointer">
-                Estado
-                {getSortIcon("estado")}
+                Estado {getSortIcon("estado")}
               </TableHead>
-              <TableHead className="w-[100px]">Acciones</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedLoans.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  No se encontraron préstamos.
+                <TableCell colSpan={8} className="h-24 text-center">
+                  No se encontraron préstamos
                 </TableCell>
               </TableRow>
             ) : (
@@ -276,13 +385,25 @@ export default function PrestamosPage() {
                   <TableCell>{loan.prestadoA}</TableCell>
                   <TableCell>{loan.fechaPrestamo}</TableCell>
                   <TableCell>{loan.fechaDevolucion}</TableCell>
+                  <TableCell className="w-32">
+                    {renderDiasRestantes(loan.diasRestantes, loan.estado)}
+                  </TableCell>
                   <TableCell>
                     <StatusBadge status={loan.estado} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-right">
                     <ActionMenu
-                      onReturn={() => handleReturnLoan(loan)}
-                      product={loan} // Pass loan as product for generic ActionMenu
+                      actions={[
+                        {
+                          label: "Ver Detalles",
+                          onClick: () => console.log("Ver detalles de préstamo", loan.id),
+                        },
+                        {
+                          label: "Registrar Devolución",
+                          onClick: () => handleReturnLoan(loan),
+                          disabled: loan.estado === "Devuelto",
+                        },
+                      ]}
                     />
                   </TableCell>
                 </TableRow>
@@ -297,7 +418,10 @@ export default function PrestamosPage() {
         onOpenChange={setIsReturnConfirmOpen}
         onConfirm={confirmReturn}
         title="Confirmar Devolución"
-        description={`¿Estás seguro de que deseas devolver el producto "${loanToReturn?.articulo}" prestado a "${loanToReturn?.prestadoA}"?`}
+        description={`¿Está seguro que desea registrar la devolución del artículo ${loanToReturn?.articulo || ""
+          }?`}
+        confirmText="Confirmar Devolución"
+        cancelText="Cancelar"
       />
     </div>
   )

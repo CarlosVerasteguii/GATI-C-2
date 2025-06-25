@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useApp } from "@/contexts/app-context"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 
 interface BrandComboboxProps {
   value: string
@@ -20,7 +20,6 @@ export function BrandCombobox({ value, onValueChange, placeholder = "Selecciona 
   const { state, updateMarcas, addRecentActivity } = useApp()
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(value)
-  const { toast } = useToast()
 
   React.useEffect(() => {
     setInputValue(value)
@@ -38,9 +37,9 @@ export function BrandCombobox({ value, onValueChange, placeholder = "Selecciona 
       updateMarcas(newMarcas)
       onValueChange(inputValue)
       setOpen(false)
-      toast({
+      showSuccess({
         title: "Marca Añadida",
-        description: `"${inputValue}" ha sido añadida a las marcas disponibles.`,
+        description: `"${inputValue}" ha sido añadida a las marcas disponibles.`
       })
       addRecentActivity({
         type: "Gestión de Atributos",
@@ -49,10 +48,9 @@ export function BrandCombobox({ value, onValueChange, placeholder = "Selecciona 
         details: { newBrand: inputValue },
       })
     } else if (inputValue && state.marcas.includes(inputValue)) {
-      toast({
+      showError({
         title: "Marca Existente",
-        description: `"${inputValue}" ya existe en la lista de marcas.`,
-        variant: "destructive",
+        description: `"${inputValue}" ya existe en la lista de marcas.`
       })
     }
   }

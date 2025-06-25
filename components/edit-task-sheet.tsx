@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Loader2, Edit, PackagePlus, PackageMinus, UserPlus, Calendar, RefreshCcw } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
-import { useToast } from "@/hooks/use-toast"
+import { showSuccess } from "@/hooks/use-toast"
 import { BrandCombobox } from "./brand-combobox"
 
 interface EditTaskSheetProps {
@@ -22,7 +22,6 @@ interface EditTaskSheetProps {
 
 export function EditTaskSheet({ open, onOpenChange, task }: EditTaskSheetProps) {
   const { state, updatePendingTask, addRecentActivity } = useApp()
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
 
   // States for form fields, initialized from task details
@@ -135,9 +134,9 @@ export function EditTaskSheet({ open, onOpenChange, task }: EditTaskSheetProps) 
           },
         ],
       })
-      toast({
+      showSuccess({
         title: "Tarea Actualizada",
-        description: `La tarea #${task.id} ha sido actualizada exitosamente.`,
+        description: `La tarea #${task.id} ha sido actualizada exitosamente.`
       })
       addRecentActivity({
         type: "Edición de Tarea",
@@ -212,76 +211,76 @@ export function EditTaskSheet({ open, onOpenChange, task }: EditTaskSheetProps) 
             task.type === "Creación de Producto" ||
             task.type === "Edición de Producto" ||
             task.type === "Duplicación de Producto") && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="productName">Nombre del Producto *</Label>
-                <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="brand">Marca</Label>
-                <BrandCombobox value={brand} onValueChange={setBrand} placeholder="Selecciona o escribe una marca" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="model">Modelo</Label>
-                <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoría</Label>
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {state.categorias.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </>
-          )}
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="productName">Nombre del Producto *</Label>
+                  <Input id="productName" value={productName} onChange={(e) => setProductName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="brand">Marca</Label>
+                  <BrandCombobox value={brand} onValueChange={setBrand} placeholder="Selecciona o escribe una marca" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model">Modelo</Label>
+                  <Input id="model" value={model} onChange={(e) => setModel(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Categoría</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {state.categorias.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Descripción</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
 
           {/* Specific fields for CARGA / Creation / Duplication */}
           {(task.type === "CARGA" ||
             task.type === "Creación de Producto" ||
             task.type === "Duplicación de Producto") && (
-            <>
-              {task.details?.serialNumbers?.length > 0 ||
-              (task.details?.productData?.numeroSerie && task.details.productData.numeroSerie !== null) ? (
-                <div className="space-y-2">
-                  <Label htmlFor="serialNumbers">Números de Serie (uno por línea)</Label>
-                  <Textarea
-                    id="serialNumbers"
-                    value={serialNumbers}
-                    onChange={(e) => setSerialNumbers(e.target.value)}
-                    rows={4}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
-                    min="1"
-                  />
-                </div>
-              )}
-            </>
-          )}
+              <>
+                {task.details?.serialNumbers?.length > 0 ||
+                  (task.details?.productData?.numeroSerie && task.details.productData.numeroSerie !== null) ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="serialNumbers">Números de Serie (uno por línea)</Label>
+                    <Textarea
+                      id="serialNumbers"
+                      value={serialNumbers}
+                      onChange={(e) => setSerialNumbers(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Cantidad</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(Number(e.target.value))}
+                      min="1"
+                    />
+                  </div>
+                )}
+              </>
+            )}
 
           {/* Specific fields for RETIRO */}
           {task.type === "RETIRO" && (

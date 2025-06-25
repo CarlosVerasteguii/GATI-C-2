@@ -14,21 +14,33 @@ interface ConfirmationDialogForEditorProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
+  title?: string
+  description?: string
+  confirmText?: string
+  cancelText?: string
 }
 
-export function ConfirmationDialogForEditor({ open, onOpenChange, onConfirm }: ConfirmationDialogForEditorProps) {
+export function ConfirmationDialogForEditor({
+  open,
+  onOpenChange,
+  onConfirm,
+  title = "Confirmar Acción",
+  description = "Tu cambio será enviado a un administrador para su aprobación. ¿Deseas continuar?",
+  confirmText = "Continuar",
+  cancelText = "Cancelar"
+}: ConfirmationDialogForEditorProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Confirmar Acción</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>
-            Tu cambio será enviado a un administrador para su aprobación. ¿Deseas continuar?
+            {description}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Continuar</AlertDialogAction>
+          <AlertDialogCancel>{cancelText}</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>{confirmText}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -11,7 +11,7 @@ export function ThemeToggle() {
   const { updateUserTheme } = useApp()
 
   const handleThemeChange = (newTheme: string) => {
-    if (newTheme === "light" || newTheme === "dark") {
+    if (newTheme && newTheme !== theme && (newTheme === "light" || newTheme === "dark")) {
       setTheme(newTheme)
       updateUserTheme(newTheme)
     }

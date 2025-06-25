@@ -20,14 +20,38 @@ import { useApp } from "@/contexts/app-context"
 import { StatusBadge } from "@/components/status-badge"
 import { ActivityDetailSheet } from "@/components/activity-detail-sheet"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+import { ToastDemo } from "@/components/toast-demo"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+
+// Definición de tipos para los préstamos
+interface PrestamoItem {
+  id: number
+  articuloId: number
+  articulo: string
+  numeroSerie: string | null
+  prestadoA: string
+  fechaPrestamo: string
+  fechaDevolucion: string
+  estado: "Activo" | "Devuelto" | "Vencido"
+  diasRestantes: number
+  notas?: string
+  registradoPor?: string
+}
+
+interface PrestamoItemExtended extends PrestamoItem {
+  diasVencido?: number
+}
 
 export default function DashboardPage() {
-  const { state } = useApp()
-  const [selectedLoan, setSelectedLoan] = useState<any>(null)
+  const { state, updateLoanStatus, updateInventoryItemStatus, addRecentActivity } = useApp()
+  const [selectedLoan, setSelectedLoan] = useState<PrestamoItemExtended | null>(null)
   const [isLoanDetailSheetOpen, setIsLoanDetailSheetOpen] = useState(false)
   const [isActivityDetailSheetOpen, setIsActivityDetailSheetOpen] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
   const [loanSheetType, setLoanSheetType] = useState<"overdue" | "expiring">("overdue")
+  const router = useRouter()
+  const [showToastDemo, setShowToastDemo] = useState(false)
 
   const totalProducts = state.inventoryData.length
   const availableProducts = state.inventoryData.filter((item) => item.estado === "Disponible").length
@@ -37,10 +61,10 @@ export default function DashboardPage() {
 
   const pendingTasks = state.pendingTasksData.filter((task) => task.status === "Pendiente").length
 
-  const prestamosVencidos = state.prestamosData.filter((p) => p.estado === "Vencido")
+  const prestamosVencidos = state.prestamosData.filter((p) => p.estado === "Vencido") as PrestamoItemExtended[];
   const prestamosPorVencer = state.prestamosData.filter(
     (p) => p.estado === "Activo" && p.diasRestantes && p.diasRestantes <= 7,
-  )
+  );
 
   const handleLoanClick = (loan: any, type: "overdue" | "expiring") => {
     setSelectedLoan(loan)
@@ -53,46 +77,161 @@ export default function DashboardPage() {
     setIsActivityDetailSheetOpen(true)
   }
 
-  const inventoryDistribution = useMemo(() => {
-    const total = totalProducts
-    if (total === 0) {
-      return {
-        disponibles: { count: 0, percentage: 0, color: "bg-status-available" },
-        asignados: { count: 0, percentage: 0, color: "bg-status-assigned" },
-        prestados: { count: 0, percentage: 0, color: "bg-status-lent" },
-        retirados: { count: 0, percentage: 0, color: "bg-status-retired" },
+  // Reemplazamos el gráfico de distribución con métricas más útiles para la toma de decisiones
+  const inventoryMetrics = useMemo(() => {
+    // Calcular métricas de valor y actividad en lugar de solo distribución
+    const totalValue = state.inventoryData.reduce((sum, item) => sum + (item.costo || 0), 0);
+
+    // Productos que requieren atención
+    const maintenanceItems = state.inventoryData.filter(item => item.estado === "En Mantenimiento");
+    const pendingRetirementItems = state.inventoryData.filter(item => item.estado === "PENDIENTE_DE_RETIRO");
+
+    // Productos por categoría (top 5)
+    const categoryCounts = state.inventoryData.reduce((acc, item) => {
+      acc[item.categoria] = (acc[item.categoria] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topCategories = Object.entries(categoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    // Productos por marca (top 5)
+    const brandCounts = state.inventoryData.reduce((acc, item) => {
+      acc[item.marca] = (acc[item.marca] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const topBrands = Object.entries(brandCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    // Productos que necesitan renovación (basado en vida útil, si está disponible)
+    const needsRenewal = state.inventoryData.filter(item => {
+      if (!item.vidaUtil) return false;
+      try {
+        // Asumiendo que vidaUtil es una fecha límite en formato ISO
+        const expiryDate = new Date(item.vidaUtil);
+        const today = new Date();
+        const monthsRemaining = (expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30);
+        return monthsRemaining <= 3 && item.estado !== "Retirado"; // Productos con 3 meses o menos de vida útil
+      } catch (e) {
+        return false;
       }
-    }
+    });
 
     return {
-      disponibles: {
-        count: availableProducts,
-        percentage: (availableProducts / total) * 100,
-        color: "bg-status-available",
-      },
-      asignados: {
-        count: assignedProducts,
-        percentage: (assignedProducts / total) * 100,
-        color: "bg-status-assigned",
-      },
-      prestados: {
-        count: lentProducts,
-        percentage: (lentProducts / total) * 100,
-        color: "bg-status-lent",
-      },
-      retirados: {
-        count: retiredProducts,
-        percentage: (retiredProducts / total) * 100,
-        color: "bg-status-retired",
-      },
+      totalValue,
+      maintenanceItems,
+      pendingRetirementItems,
+      topCategories,
+      topBrands,
+      needsRenewal,
+      // Mantener los conteos básicos para referencia
+      counts: {
+        disponibles: availableProducts,
+        asignados: assignedProducts,
+        prestados: lentProducts,
+        retirados: retiredProducts,
+        total: totalProducts
+      }
+    };
+  }, [state.inventoryData, availableProducts, assignedProducts, lentProducts, retiredProducts, totalProducts]);
+
+  // Función para formatear fechas con manejo de errores
+  const formatDate = (dateString: string) => {
+    try {
+      if (!dateString) return "N/A";
+      const date = new Date(dateString);
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) return "Fecha inválida";
+      return date.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch (error) {
+      console.error("Error al formatear fecha:", error);
+      return "Fecha inválida";
     }
-  }, [totalProducts, availableProducts, assignedProducts, lentProducts, retiredProducts])
+  };
+
+  // Función para formatear fechas con hora con manejo de errores
+  const formatDateTime = (dateString: string) => {
+    try {
+      if (!dateString) return "N/A";
+      const date = new Date(dateString);
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) return "Fecha inválida";
+      return date.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch (error) {
+      console.error("Error al formatear fecha y hora:", error);
+      return "Fecha inválida";
+    }
+  };
+
+  // Función para manejar la devolución de un préstamo
+  const handleReturnLoan = () => {
+    if (!selectedLoan) return;
+
+    // Actualizar el estado del préstamo a "Devuelto"
+    updateLoanStatus(selectedLoan.id, "Devuelto");
+
+    // Actualizar el estado del artículo a "Disponible"
+    updateInventoryItemStatus(selectedLoan.articuloId, "Disponible");
+
+    // Registrar la actividad de devolución
+    const newActivity = {
+      type: "Devolución",
+      description: `${selectedLoan.articulo} devuelto por ${selectedLoan.prestadoA}`,
+      date: new Date().toISOString(),
+      requestedBy: state.user?.nombre || "Usuario del sistema",
+      details: {
+        returnedBy: selectedLoan.prestadoA,
+        returnDate: new Date().toISOString(),
+        receivedBy: state.user?.nombre,
+        condition: "Bueno",
+        items: [
+          {
+            name: selectedLoan.articulo,
+            serial: selectedLoan.numeroSerie,
+            quantity: 1,
+            estado: "Devuelto"
+          }
+        ]
+      }
+    };
+
+    // Añadir la actividad reciente
+    addRecentActivity(newActivity);
+
+    // Cerrar el modal
+    setIsLoanDetailSheetOpen(false);
+
+    // Mostrar mensaje de éxito (si tienes un sistema de toast)
+    // toast.success("Préstamo registrado como devuelto correctamente");
+  };
+
+  // Función para navegar a inventario con filtros específicos
+  const handleViewInventoryDetails = (filter: string) => {
+    if (filter === 'maintenance') {
+      router.push('/inventario?estado=En Mantenimiento');
+    } else if (filter === 'pending-retirement') {
+      router.push('/inventario?estado=PENDIENTE_DE_RETIRO');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Resumen general del sistema de inventario</p>
+      <div className="text-muted-foreground mb-2">
+        Resumen general del sistema de inventario
       </div>
 
       {/* Tarjetas de Estadísticas */}
@@ -220,44 +359,145 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Nueva Tarjeta: Resumen de Inventario por Estado - Mejorado */}
-      <Card className="cfe-border-left cfe-border-left-green">
+      {/* Reemplazamos la tarjeta de distribución por tarjetas de métricas más útiles */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Tarjeta: Productos que requieren atención */}
+        <Card className="cfe-border-left cfe-border-left-blue">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-status-maintenance">
+              <FileText className="h-5 w-5" />
+              Productos que requieren atención
+            </CardTitle>
+            <CardDescription>Artículos en mantenimiento o pendientes de retiro</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium leading-none">En mantenimiento</p>
+                  <p className="text-sm text-muted-foreground">
+                    {inventoryMetrics.maintenanceItems.length} productos
+                  </p>
+                </div>
+                <div className="text-2xl font-bold text-status-maintenance">
+                  {inventoryMetrics.maintenanceItems.length > 0
+                    ? ((inventoryMetrics.maintenanceItems.length / totalProducts) * 100).toFixed(1) + '%'
+                    : '0%'}
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium leading-none">Pendientes de retiro</p>
+                  <p className="text-sm text-muted-foreground">
+                    {inventoryMetrics.pendingRetirementItems.length} productos
+                  </p>
+                </div>
+                <div className="text-2xl font-bold text-status-pending">
+                  {inventoryMetrics.pendingRetirementItems.length > 0
+                    ? ((inventoryMetrics.pendingRetirementItems.length / totalProducts) * 100).toFixed(1) + '%'
+                    : '0%'}
+                </div>
+              </div>
+              {inventoryMetrics.maintenanceItems.length > 0 || inventoryMetrics.pendingRetirementItems.length > 0 ? (
+                <div className="space-y-2">
+                  {inventoryMetrics.maintenanceItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleViewInventoryDetails('maintenance')}
+                    >
+                      Ver artículos en mantenimiento
+                    </Button>
+                  )}
+                  {inventoryMetrics.pendingRetirementItems.length > 0 && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => handleViewInventoryDetails('pending-retirement')}
+                    >
+                      Ver artículos pendientes de retiro
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center italic">No hay productos que requieran atención</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tarjeta: Distribución por categoría */}
+        <Card className="cfe-border-left cfe-border-left-green">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-cfe-green">
+              <Package className="h-5 w-5" />
+              Top Categorías
+            </CardTitle>
+            <CardDescription>Las categorías con mayor número de productos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {inventoryMetrics.topCategories.length > 0 ? (
+                inventoryMetrics.topCategories.map(([category, count], index) => (
+                  <div key={category} className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">{category}</p>
+                      <p className="text-sm text-muted-foreground">{count} productos</p>
+                    </div>
+                    <div className="text-lg font-semibold">
+                      {((count / totalProducts) * 100).toFixed(1)}%
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center italic">No hay datos de categorías</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tarjeta: Métricas adicionales */}
+      <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-cfe-green">
-            <Package className="h-5 w-5" />
-            Distribución de Inventario por Estado
-          </CardTitle>
-          <CardDescription>Porcentaje y cantidad de productos en cada estado.</CardDescription>
+          <CardTitle className="text-lg">Métricas de Inventario</CardTitle>
+          <CardDescription>Información clave para la toma de decisiones</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="h-6 w-full rounded-full overflow-hidden flex border border-gray-200 dark:border-gray-700">
-              {Object.entries(inventoryDistribution).map(([key, data]) => (
-                <div
-                  key={key}
-                  className={cn("h-full", data.color)}
-                  style={{ width: `${data.percentage}%` }}
-                  title={`${key}: ${data.count} (${data.percentage.toFixed(1)}%)`}
-                ></div>
-              ))}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Valor total del inventario */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Valor total del inventario</h3>
+              <div className="text-2xl font-bold">
+                ${inventoryMetrics.totalValue.toLocaleString('es-MX')}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Basado en {state.inventoryData.filter(item => item.costo).length} productos con costo registrado
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-status-available"></div>
-                <span className="text-xs font-medium">Disponibles: {inventoryDistribution.disponibles.count}</span>
+
+            {/* Top marcas */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Top 3 Marcas</h3>
+              <div className="space-y-1">
+                {inventoryMetrics.topBrands.slice(0, 3).map(([brand, count], index) => (
+                  <div key={brand} className="flex items-center justify-between">
+                    <span className="text-sm">{brand}</span>
+                    <span className="text-sm font-medium">{count}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-status-assigned"></div>
-                <span className="text-xs font-medium">Asignados: {inventoryDistribution.asignados.count}</span>
+            </div>
+
+            {/* Productos por renovar */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Productos por renovar</h3>
+              <div className="text-2xl font-bold text-status-lent">
+                {inventoryMetrics.needsRenewal.length}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-status-lent"></div>
-                <span className="text-xs font-medium">Prestados: {inventoryDistribution.prestados.count}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-3 w-3 rounded-sm bg-status-retired"></div>
-                <span className="text-xs font-medium">Retirados: {inventoryDistribution.retirados.count}</span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Productos con menos de 3 meses de vida útil restante
+              </p>
             </div>
           </div>
         </CardContent>
@@ -266,11 +506,28 @@ export default function DashboardPage() {
       {/* Actividad Reciente */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Actividad Reciente
-          </CardTitle>
-          <CardDescription>Últimas operaciones realizadas en el sistema</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Actividad Reciente
+              </CardTitle>
+              <CardDescription>Últimas operaciones realizadas en el sistema</CardDescription>
+            </div>
+            <Dialog open={showToastDemo} onOpenChange={setShowToastDemo}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-xs">
+                  🎨 Demo Toast
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                  <DialogTitle>🎨 Sistema de Toast Mejorado</DialogTitle>
+                </DialogHeader>
+                <ToastDemo />
+              </DialogContent>
+            </Dialog>
+          </div>
         </CardHeader>
         <CardContent>
           {state.recentActivities.length === 0 ? (
@@ -286,13 +543,7 @@ export default function DashboardPage() {
                   <div className="flex-1">
                     <p className="font-medium text-sm">{activity.description}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {new Date(activity.date).toLocaleString("es-MX", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatDateTime(activity.date)}
                     </p>
                   </div>
                   <Button size="sm" variant="outline" className="flex gap-1 items-center">
@@ -339,13 +590,13 @@ export default function DashboardPage() {
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Fecha Préstamo</h4>
                     <p>
-                      {new Date(selectedLoan.fechaPrestamo).toLocaleDateString("es-MX")}
+                      {formatDate(selectedLoan.fechaPrestamo)}
                     </p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Fecha Devolución</h4>
                     <p>
-                      {new Date(selectedLoan.fechaDevolucion).toLocaleDateString("es-MX")}
+                      {formatDate(selectedLoan.fechaDevolucion)}
                     </p>
                   </div>
                 </div>
@@ -364,7 +615,12 @@ export default function DashboardPage() {
                 <Button variant="outline" onClick={() => setIsLoanDetailSheetOpen(false)}>
                   Cerrar
                 </Button>
-                <Button>Registrar Devolución</Button>
+                <Button
+                  onClick={handleReturnLoan}
+                  className="bg-cfe-green hover:bg-cfe-green/90"
+                >
+                  Registrar Devolución
+                </Button>
               </div>
             </div>
           )}

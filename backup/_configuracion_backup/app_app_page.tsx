@@ -5,17 +5,42 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Search, ArrowUpDown, PlusCircle } from "lucide-react"
+import { Search, ArrowUpDown, PlusCircle, MoreHorizontal, CheckCircle, XCircle, UserPlus, Edit, Trash2, Eye, Save, X } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
-import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
+import type { User, AccessRequest, PendingActionRequest } from "@/contexts/app-context"
+import { useToast } from "@/hooks/use-toast"
 import { ConfirmationDialogForEditor } from "@/components/confirmation-dialog-for-editor"
 import { AccessRequestModal } from "@/components/access-request-modal"
 import { StatusBadge } from "@/components/status-badge"
 import { ActionMenu } from "@/components/action-menu"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { TaskAuditLogSheet } from "@/components/task-audit-log-sheet"
 
 export default function ConfiguracionPage() {
-  const { state, dispatch, addRecentActivity } = useApp()
-
+  const {
+    state,
+    dispatch,
+    addRecentActivity,
+    updateAccessRequestStatus,
+    updatePendingActionRequests,
+    updateUserInUsersData,
+    updateUserColumnPreferences,
+    updateSolicitudes,
+  } = useApp()
+  const { solicitudesAcceso, pendingActionRequests, usersData, user, categorias, marcas, retirementReasons } = state
+  const { toast } = useToast()
 
   // User Management State
   const [userSearchTerm, setUserSearchTerm] = useState("")
@@ -26,19 +51,32 @@ export default function ConfiguracionPage() {
   const [isUserDeleteConfirmOpen, setIsUserDeleteConfirmOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<any>(null)
 
-  // Access Request Management State
+  // Old user management states to reconcile
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [newUserName, setNewUserName] = useState("")
+  const [newUserEmail, setNewUserEmail] = useState("")
+  const [newUserRole, setNewUserRole] = useState<User["rol"]>("Visualizador")
+  const [newUserPassword, setNewUserPassword] = useState("") // Important to keep
+
+  // Access Request Management State (reconciled)
+  const [selectedRequest, setSelectedRequest] = useState<AccessRequest | PendingActionRequest | null>(null)
+  const [actionType, setActionType] = useState<"approve" | "reject" | "delete">("approve")
+  const [requestType, setRequestType] = useState<"access" | "action">("access")
+  const [isAccessRequestModalOpen, setIsAccessRequestModalOpen] = useState(false) // Keeping this as it's from the newer file for a specific modal
+  const [isAccessRequestApproveConfirmOpen, setIsAccessRequestApproveConfirmOpen] = useState(false)
+  const [requestToApprove, setRequestToApprove] = useState<AccessRequest | null>(null)
+  const [isAccessRequestRejectConfirmOpen, setIsAccessRequestRejectConfirmOpen] = useState(false)
+  const [requestToReject, setRequestToReject] = useState<AccessRequest | null>(null)
+  const [isAuditLogSheetOpen, setIsAuditLogSheetOpen] = useState(false)
+
   const [accessRequestSearchTerm, setAccessRequestSearchTerm] = useState("")
   const [accessRequestSortConfig, setAccessRequestSortConfig] = useState<{
     key: string
     direction: "ascending" | "descending"
   } | null>(null)
-  const [isAccessRequestModalOpen, setIsAccessRequestModalOpen] = useState(false)
-  const [isAccessRequestApproveConfirmOpen, setIsAccessRequestApproveConfirmOpen] = useState(false)
-  const [requestToApprove, setRequestToApprove] = useState<any>(null)
-  const [isAccessRequestRejectConfirmOpen, setIsAccessRequestRejectConfirmOpen] = useState(false)
-  const [requestToReject, setRequestToReject] = useState<any>(null)
 
-  // Attribute Management State
+  // Attribute Management State (reconciled)
   const [attributeSearchTerm, setAttributeSearchTerm] = useState("")
   const [attributeSortConfig, setAttributeSortConfig] = useState<{
     key: string
@@ -47,7 +85,21 @@ export default function ConfiguracionPage() {
   const [isAttributeDeleteConfirmOpen, setIsAttributeDeleteConfirmOpen] = useState(false)
   const [attributeToDelete, setAttributeToDelete] = useState<any>(null)
   const [newAttributeName, setNewAttributeName] = useState("")
-  const [newAttributeType, setNewAttributeType] = useState("text") // Default type
+  const [newAttributeType, setNewAttributeType] = useState("text") // Default type (from newer file)
+
+  // Old attribute management states to reconcile
+  const [isAttributeModalOpen, setIsAttributeModalOpen] = useState(false)
+  const [newAttributeValue, setNewAttributeValue] = useState("")
+  const [editingAttribute, setEditingAttribute] = useState<{ type: string; value: string } | null>(null)
+
+  // Column Customization State (newly added from old file)
+  const [isColumnCustomizationModalOpen, setIsColumnCustomizationModalOpen] = useState(false)
+  const [selectedPageForColumns, setSelectedPageForColumns] = useState("inventario")
+  const [columnPreferences, setColumnPreferences] = useState<{ id: string; label: string; visible: boolean }[]>([])
+
+  const canManageUsers = user?.rol === "Administrador"
+  const canManageAttributes = user?.rol === "Administrador"
+  const canManageColumnPreferences = user?.rol === "Administrador" || user?.rol === "Editor"
 
   // Handlers for User Management
   const handleUserDelete = (user: any) => {
@@ -64,7 +116,7 @@ export default function ConfiguracionPage() {
         date: new Date().toLocaleString(),
         details: { userId: userToDelete.id, userName: userToDelete.nombre, userRole: userToDelete.rol },
       })
-      showSuccess({
+      toast({
         title: "Usuario Eliminado",
         description: `El usuario ${userToDelete.nombre} ha sido eliminado.`,
       })
@@ -73,8 +125,79 @@ export default function ConfiguracionPage() {
     }
   }
 
+  const handleAddOrEditUser = (userToEdit?: User) => {
+    if (userToEdit) {
+      setEditingUser(userToEdit)
+      setNewUserName(userToEdit.nombre || "")
+      setNewUserEmail(userToEdit.email || "")
+      setNewUserRole(userToEdit.rol)
+      setNewUserPassword(userToEdit.password || "") // Pre-fill password if exists
+    } else {
+      setEditingUser(null)
+      setNewUserName("")
+      setNewUserEmail("")
+      setNewUserRole("Visualizador")
+      setNewUserPassword("")
+    }
+    setIsUserModalOpen(true)
+  }
+
+  const saveUser = () => {
+    if (!newUserName || !newUserEmail || !newUserRole || !newUserPassword) {
+      toast({
+        title: "Error",
+        description: "Todos los campos son obligatorios.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (editingUser) {
+      // Edit existing user
+      dispatch({
+        type: "UPDATE_USER_IN_USERS_DATA",
+        payload: {
+          userId: editingUser.id,
+          updates: {
+            nombre: newUserName,
+            email: newUserEmail,
+            rol: newUserRole,
+            password: newUserPassword,
+          },
+          newUser: { ...editingUser, nombre: newUserName, email: newUserEmail, rol: newUserRole, password: newUserPassword },
+        },
+      })
+      addRecentActivity({
+        type: "Edición de Usuario",
+        description: `Usuario "${editingUser.nombre || ""}" editado a "${newUserName}".`,
+        date: new Date().toLocaleString(),
+        details: { userId: editingUser.id, oldName: editingUser.nombre, newName: newUserName, editedBy: user?.nombre },
+      })
+      toast({ title: "Usuario Actualizado", description: `El usuario ${newUserName} ha sido actualizado.` })
+    } else {
+      // Add new user
+      const newId = Math.max(...state.usersData.map((u) => u.id), 0) + 1
+      const newUser: User = {
+        id: newId,
+        nombre: newUserName,
+        email: newUserEmail,
+        rol: newUserRole,
+        password: newUserPassword,
+      }
+      dispatch({ type: "UPDATE_USER_IN_USERS_DATA", payload: { userId: 0, updates: {}, newUser } }) // Pass 0 or a placeholder, the reducer will add it
+      addRecentActivity({
+        type: "Creación de Usuario",
+        description: `Nuevo usuario "${newUserName}" (${newUserRole}) creado.`,
+        date: new Date().toLocaleString(),
+        details: { userId: newId, userName: newUserName, userRole: newUserRole, createdBy: user?.nombre },
+      })
+      toast({ title: "Usuario Creado", description: `El usuario ${newUserName} ha sido creado.` })
+    }
+    setIsUserModalOpen(false)
+  }
+
   const filteredUsers = useMemo(() => {
-    const filtered = (state.usersData || []).filter((user) => {
+    const filtered = state.usersData.filter((user) => {
       const matchesSearch =
         (user.nombre || "").toLowerCase().includes(userSearchTerm.toLowerCase()) ||
         (user.email || "").toLowerCase().includes(userSearchTerm.toLowerCase()) ||
@@ -137,7 +260,7 @@ export default function ConfiguracionPage() {
         date: new Date().toLocaleString(),
         details: { requestId: requestToApprove.id, requestName: requestToApprove.name },
       })
-      showSuccess({
+      toast({
         title: "Solicitud Aprobada",
         description: `La solicitud de ${requestToApprove.name} ha sido aprobada.`,
       })
@@ -160,7 +283,7 @@ export default function ConfiguracionPage() {
         date: new Date().toLocaleString(),
         details: { requestId: requestToReject.id, requestName: requestToReject.name },
       })
-      showError({
+      toast({
         title: "Solicitud Rechazada",
         description: `La solicitud de ${requestToReject.name} ha sido rechazada.`,
       })
@@ -170,7 +293,7 @@ export default function ConfiguracionPage() {
   }
 
   const filteredAccessRequests = useMemo(() => {
-    const filtered = (state.accessRequests || []).filter((request) => {
+    const filtered = state.accessRequests.filter((request) => {
       const matchesSearch =
         (request.name || "").toLowerCase().includes(accessRequestSearchTerm.toLowerCase()) ||
         (request.email || "").toLowerCase().includes(accessRequestSearchTerm.toLowerCase()) ||
@@ -235,16 +358,17 @@ export default function ConfiguracionPage() {
         date: new Date().toLocaleString(),
         details: { attributeName: newAttributeName, attributeType: newAttributeType },
       })
-      showSuccess({
+      toast({
         title: "Atributo Añadido",
-        description: `El atributo "${newAttributeName}" ha sido añadido exitosamente.`
+        description: `El atributo "${newAttributeName}" ha sido añadido.`,
       })
       setNewAttributeName("")
       setNewAttributeType("text")
     } else {
-      showError({
+      toast({
         title: "Error",
         description: "El nombre del atributo no puede estar vacío.",
+        variant: "destructive",
       })
     }
   }
@@ -263,7 +387,7 @@ export default function ConfiguracionPage() {
         date: new Date().toLocaleString(),
         details: { attributeId: attributeToDelete.id, attributeName: attributeToDelete.name },
       })
-      showSuccess({
+      toast({
         title: "Atributo Eliminado",
         description: `El atributo "${attributeToDelete.name}" ha sido eliminado.`,
       })
@@ -273,7 +397,7 @@ export default function ConfiguracionPage() {
   }
 
   const filteredAttributes = useMemo(() => {
-    const filtered = (state.customAttributes || []).filter((attribute) => {
+    const filtered = state.customAttributes.filter((attribute) => {
       const matchesSearch =
         (attribute.name || "").toLowerCase().includes(attributeSearchTerm.toLowerCase()) ||
         (attribute.type || "").toLowerCase().includes(attributeSearchTerm.toLowerCase())
@@ -318,6 +442,55 @@ export default function ConfiguracionPage() {
     }
     return <ArrowUpDown className="ml-2 h-4 w-4" />
   }
+
+  // Column Customization Handlers (from old file)
+  const handleOpenColumnCustomization = (page: string) => {
+    setSelectedPageForColumns(page)
+    const userPrefs = state.userColumnPreferences.find(pref => pref.page === page && pref.userId === state.user?.id)
+    const initialColumns = userPrefs ? userPrefs.preferences : [] // Assuming preferences array is already structured { id, label, visible }
+    setColumnPreferences(initialColumns)
+    setIsColumnCustomizationModalOpen(true)
+  }
+
+  const handleColumnVisibilityChange = (id: string, checked: boolean) => {
+    setColumnPreferences(prev => prev.map(col =>
+      col.id === id ? { ...col, visible: checked } : col
+    ))
+  }
+
+  const saveColumnPreferences = () => {
+    if (state.user) {
+      dispatch({
+        type: "UPDATE_USER_COLUMN_PREFERENCES",
+        payload: {
+          userId: state.user.id,
+          pageId: selectedPageForColumns,
+          columns: columnPreferences.filter(col => col.visible).map(col => col.id)
+        }
+      })
+      toast({
+        title: "Preferencias Guardadas",
+        description: "Tus preferencias de columnas han sido actualizadas.",
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar las preferencias. Por favor, inicia sesión.",
+        variant: "destructive",
+      })
+    }
+    setIsColumnCustomizationModalOpen(false)
+  }
+
+  // Current Access Requests filtered for pending status
+  const pendingAccessRequests = state.solicitudesAcceso.filter(
+    (request) => request.estado === "Pendiente",
+  )
+
+  // Combined and filtered pending action requests
+  const filteredPendingActionRequests = state.pendingActionRequests.filter(
+    (request) => request.status === "Pendiente",
+  )
 
   return (
     <div className="flex flex-col gap-4">
