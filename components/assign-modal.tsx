@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { useApp } from "@/contexts/app-context"
 import { ConfirmationDialogForEditor } from "./confirmation-dialog-for-editor"
 
@@ -32,15 +32,15 @@ export function AssignModal({ open, onOpenChange, product, onSuccess }: AssignMo
   const [isLoading, setIsLoading] = useState(false)
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
   const [pendingActionDetails, setPendingActionDetails] = useState<any>(null)
-  const { toast } = useToast()
+
 
   const availableQuantity =
     product?.numeroSerie === null
       ? state.inventoryData
-          .filter(
-            (item) => item.nombre === product.nombre && item.modelo === product.modelo && item.estado === "Disponible",
-          )
-          .reduce((sum, item) => sum + item.cantidad, 0)
+        .filter(
+          (item) => item.nombre === product.nombre && item.modelo === product.modelo && item.estado === "Disponible",
+        )
+        .reduce((sum, item) => sum + item.cantidad, 0)
       : 1 // For serialized, it's always 1 if available
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -53,20 +53,18 @@ export function AssignModal({ open, onOpenChange, product, onSuccess }: AssignMo
     const quantity = product.numeroSerie === null ? Number.parseInt(formData.get("quantity") as string) : 1
 
     if (!assignedTo) {
-      toast({
+      showError({
         title: "Error",
-        description: "Por favor, ingresa a quién se asigna el producto.",
-        variant: "destructive",
+        description: "Por favor, ingresa a quién se asigna el producto."
       })
       setIsLoading(false)
       return
     }
 
     if (product.numeroSerie === null && quantity > availableQuantity) {
-      toast({
+      showError({
         title: "Error de Cantidad",
-        description: `Solo hay ${availableQuantity} unidades disponibles para asignar.`,
-        variant: "destructive",
+        description: `Solo hay ${availableQuantity} unidades disponibles para asignar.`
       })
       setIsLoading(false)
       return
@@ -141,9 +139,9 @@ export function AssignModal({ open, onOpenChange, product, onSuccess }: AssignMo
         updateInventory(updatedInventory)
       }
 
-      toast({
+      showSuccess({
         title: "Producto asignado",
-        description: `${details.productName} ha sido asignado a ${details.assignedTo}.`,
+        description: `${details.productName} ha sido asignado a ${details.assignedTo}.`
       })
       addRecentActivity({
         type: "Asignación",
@@ -178,9 +176,9 @@ export function AssignModal({ open, onOpenChange, product, onSuccess }: AssignMo
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
-      description: `Tu solicitud de ${pendingActionDetails.type.toLowerCase()} ha sido enviada a un administrador para aprobación.`,
+      description: `Tu solicitud de ${pendingActionDetails.type.toLowerCase()} ha sido enviada a un administrador para aprobación.`
     })
     setIsConfirmEditorOpen(false)
     onOpenChange(false)

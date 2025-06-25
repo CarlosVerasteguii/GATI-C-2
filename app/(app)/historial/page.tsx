@@ -1,13 +1,5 @@
 "use client"
 
-import { DropdownMenuSubContent } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuPortal } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu"
-
-import { DropdownMenuSub } from "@/components/ui/dropdown-menu"
-
 import { useState, useMemo } from "react"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -19,10 +11,29 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent
 } from "@/components/ui/dropdown-menu"
-import { Search, Filter, ArrowUpDown, Eye } from "lucide-react"
+import {
+  Search,
+  Filter,
+  ArrowUpDown,
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  CalendarIcon
+} from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { ActivityDetailSheet } from "@/components/activity-detail-sheet"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
+
+const ITEMS_PER_PAGE = 10
 
 export default function HistorialPage() {
   const { state } = useApp()
@@ -30,10 +41,12 @@ export default function HistorialPage() {
   const [filters, setFilters] = useState({
     type: "Todos",
   })
+  const [filterDate, setFilterDate] = useState<Date | undefined>(undefined)
   const [sortConfig, setSortConfig] = useState<{
     key: string
     direction: "ascending" | "descending"
-  } | null>(null)
+  }>({ key: "date", direction: "descending" })
+  const [currentPage, setCurrentPage] = useState(1)
   const [isActivityDetailSheetOpen, setIsActivityDetailSheetOpen] = useState(false)
   const [selectedActivity, setSelectedActivity] = useState<any>(null)
 
@@ -45,17 +58,27 @@ export default function HistorialPage() {
   const filteredActivities = useMemo(() => {
     const filtered = state.recentActivities.filter((activity) => {
       const matchesSearch =
-        activity.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.date?.toLowerCase().includes(searchTerm.toLowerCase())
+        (activity.type || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (activity.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (activity.date || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (activity.details?.product?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (activity.details?.assignedTo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (activity.details?.lentTo || "").toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesType = filters.type === "Todos" || activity.type === filters.type
 
-      return matchesSearch && matchesType
+      // Filtro de fecha
+      let matchesDate = true
+      if (filterDate) {
+        const activityDate = new Date(activity.date)
+        matchesDate = activityDate.toDateString() === filterDate.toDateString()
+      }
+
+      return matchesSearch && matchesType && matchesDate
     })
 
     return filtered
-  }, [state.recentActivities, searchTerm, filters])
+  }, [state.recentActivities, searchTerm, filters, filterDate])
 
   const sortedActivities = useMemo(() => {
     if (!sortConfig) {
@@ -63,8 +86,24 @@ export default function HistorialPage() {
     }
 
     const sorted = [...filteredActivities].sort((a, b) => {
-      const aValue = a[sortConfig.key] || ""
-      const bValue = b[sortConfig.key] || ""
+      let aValue: any;
+      let bValue: any;
+
+      // Manejo especial para fechas
+      if (sortConfig.key === "date") {
+        aValue = new Date(a.date).getTime()
+        bValue = new Date(b.date).getTime()
+      } else if (sortConfig.key === "type") {
+        aValue = a.type
+        bValue = b.type
+      } else if (sortConfig.key === "description") {
+        aValue = a.description
+        bValue = b.description
+      } else {
+        // Fallback para otras propiedades
+        aValue = (a as any)[sortConfig.key] || ""
+        bValue = (b as any)[sortConfig.key] || ""
+      }
 
       if (aValue < bValue) {
         return sortConfig.direction === "ascending" ? -1 : 1
@@ -76,6 +115,12 @@ export default function HistorialPage() {
     })
     return sorted
   }, [filteredActivities, sortConfig])
+
+  // Paginación
+  const totalPages = Math.ceil(sortedActivities.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedActivities = sortedActivities.slice(startIndex, endIndex)
 
   const requestSort = (key: string) => {
     let direction: "ascending" | "descending" = "ascending"
@@ -104,6 +149,9 @@ export default function HistorialPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Historial</h1>
+        <Button variant="outline" onClick={() => setFilterDate(undefined)}>
+          {filterDate ? "Limpiar Filtro de Fecha" : "Mostrar Todos"}
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -117,9 +165,25 @@ export default function HistorialPage() {
             className="w-full rounded-lg bg-background pl-8"
           />
         </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn(filterDate && "border-primary")}>
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {filterDate ? format(filterDate, "PPP") : "Fecha"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0">
+            <Calendar
+              mode="single"
+              selected={filterDate}
+              onSelect={setFilterDate}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className={cn(filters.type !== "Todos" && "border-primary")}>
               <Filter className="mr-2 h-4 w-4" />
               Filtros
             </Button>
@@ -167,14 +231,14 @@ export default function HistorialPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedActivities.length === 0 ? (
+            {paginatedActivities.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                   No se encontraron actividades.
                 </TableCell>
               </TableRow>
             ) : (
-              sortedActivities.map((activity, index) => (
+              paginatedActivities.map((activity, index) => (
                 <TableRow key={index}>
                   <TableCell className="font-medium">{activity.type}</TableCell>
                   <TableCell>{activity.description}</TableCell>
@@ -193,6 +257,33 @@ export default function HistorialPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Paginación */}
+      {sortedActivities.length > ITEMS_PER_PAGE && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {startIndex + 1} - {Math.min(endIndex, sortedActivities.length)} de {sortedActivities.length} actividades
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {selectedActivity && (
         <ActivityDetailSheet

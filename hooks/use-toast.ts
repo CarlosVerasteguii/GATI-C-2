@@ -8,8 +8,8 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -36,21 +36,21 @@ type ActionType = typeof actionTypes
 
 type Action =
   | {
-      type: ActionType["ADD_TOAST"]
-      toast: ToasterToast
-    }
+    type: ActionType["ADD_TOAST"]
+    toast: ToasterToast
+  }
   | {
-      type: ActionType["UPDATE_TOAST"]
-      toast: Partial<ToasterToast>
-    }
+    type: ActionType["UPDATE_TOAST"]
+    toast: Partial<ToasterToast>
+  }
   | {
-      type: ActionType["DISMISS_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
+    type: ActionType["DISMISS_TOAST"]
+    toastId?: ToasterToast["id"]
+  }
   | {
-      type: ActionType["REMOVE_TOAST"]
-      toastId?: ToasterToast["id"]
-    }
+    type: ActionType["REMOVE_TOAST"]
+    toastId?: ToasterToast["id"]
+  }
 
 interface State {
   toasts: ToasterToast[]
@@ -108,9 +108,9 @@ export const reducer = (state: State, action: Action): State => {
         toasts: state.toasts.map((t) =>
           t.id === toastId || toastId === undefined
             ? {
-                ...t,
-                open: false,
-              }
+              ...t,
+              open: false,
+            }
             : t
         ),
       }
@@ -171,6 +171,58 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// Enhanced toast functions with better UX and auto-dismiss
+const createToastFunction = (variant: "default" | "success" | "error" | "warning" | "info" | "destructive", defaultDuration: number = TOAST_REMOVE_DELAY) => {
+  return ({ title, description, duration = defaultDuration, ...props }: {
+    title?: React.ReactNode
+    description?: React.ReactNode
+    duration?: number
+  } & Omit<Toast, "variant">) => {
+    const id = genId()
+
+    const update = (props: ToasterToast) =>
+      dispatch({
+        type: "UPDATE_TOAST",
+        toast: { ...props, id },
+      })
+    const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+
+    dispatch({
+      type: "ADD_TOAST",
+      toast: {
+        ...props,
+        id,
+        variant,
+        title,
+        description,
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) dismiss()
+        },
+      },
+    })
+
+    // Auto-dismiss after duration
+    if (duration > 0) {
+      setTimeout(() => {
+        dismiss()
+      }, duration)
+    }
+
+    return {
+      id: id,
+      dismiss,
+      update,
+    }
+  }
+}
+
+// Convenient toast functions
+const showSuccess = createToastFunction("success", 4000)
+const showError = createToastFunction("error", 6000)
+const showWarning = createToastFunction("warning", 5000)
+const showInfo = createToastFunction("info", 4000)
+
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
@@ -187,8 +239,12 @@ function useToast() {
   return {
     ...state,
     toast,
+    showSuccess,
+    showError,
+    showWarning,
+    showInfo,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   }
 }
 
-export { useToast, toast }
+export { useToast, toast, showSuccess, showError, showWarning, showInfo }

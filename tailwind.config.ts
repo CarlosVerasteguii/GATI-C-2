@@ -94,6 +94,31 @@ const config = {
         "highlight-yellow": {
           DEFAULT: "#FFFFE0",
         },
+        // Toast specific colors for enhanced visual appeal
+        "toast-success": {
+          DEFAULT: "#10B981", // Emerald-500
+          light: "#D1FAE5", // Emerald-100
+          border: "#A7F3D0", // Emerald-200
+          ring: "#6EE7B7", // Emerald-300
+        },
+        "toast-error": {
+          DEFAULT: "#EF4444", // Red-500
+          light: "#FEE2E2", // Red-100
+          border: "#FECACA", // Red-200
+          ring: "#F87171", // Red-300
+        },
+        "toast-warning": {
+          DEFAULT: "#F59E0B", // Amber-500
+          light: "#FEF3C7", // Amber-100
+          border: "#FDE68A", // Amber-200
+          ring: "#FBBF24", // Amber-300
+        },
+        "toast-info": {
+          DEFAULT: "#3B82F6", // Blue-500
+          light: "#DBEAFE", // Blue-100
+          border: "#BFDBFE", // Blue-200
+          ring: "#93C5FD", // Blue-300
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -109,10 +134,61 @@ const config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        // Toast animations
+        "toast-slide-in": {
+          "0%": {
+            transform: "translateX(100%) scale(0.95)",
+            opacity: "0"
+          },
+          "50%": {
+            transform: "translateX(-5%) scale(1.02)",
+            opacity: "0.8"
+          },
+          "100%": {
+            transform: "translateX(0%) scale(1)",
+            opacity: "1"
+          },
+        },
+        "toast-slide-out": {
+          "0%": {
+            transform: "translateX(0%) scale(1)",
+            opacity: "1"
+          },
+          "50%": {
+            transform: "translateX(20%) scale(0.98)",
+            opacity: "0.5"
+          },
+          "100%": {
+            transform: "translateX(100%) scale(0.95)",
+            opacity: "0"
+          },
+        },
+
+        "toast-bounce-in": {
+          "0%": {
+            transform: "scale(0.3)",
+            opacity: "0"
+          },
+          "50%": {
+            transform: "scale(1.05)",
+            opacity: "0.8"
+          },
+          "70%": {
+            transform: "scale(0.9)",
+            opacity: "0.9"
+          },
+          "100%": {
+            transform: "scale(1)",
+            opacity: "1"
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "toast-slide-in": "toast-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "toast-slide-out": "toast-slide-out 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        "toast-bounce-in": "toast-bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards",
       },
     },
   },

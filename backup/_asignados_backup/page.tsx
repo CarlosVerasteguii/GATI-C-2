@@ -18,105 +18,63 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
-import { Search, Filter, ArrowUpDown, ArrowUpRight } from "lucide-react"
+import { Search, Filter, ArrowUpDown } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
 import { StatusBadge } from "@/components/status-badge"
 import { ConfirmationDialogForEditor } from "@/components/confirmation-dialog-for-editor"
-import { showSuccess, showWarning, showInfo } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { ActionMenu } from "@/components/action-menu"
 
-// Definir una función segura para acceder a propiedades
-const safeAccess = (obj: any, key: string) => {
-  if (!obj) return ""
-
-  // Mapeamos las propiedades incorrectas a las correctas
-  const propertyMap: Record<string, string> = {
-    articulo: "articuloNombre",
-  }
-
-  const mappedKey = propertyMap[key] || key
-  return obj[mappedKey] || ""
-}
-
-/**
- * AsignadosPage - Página principal para gestionar los artículos asignados.
- * Muestra una lista de los productos asignados con funcionalidad de filtrado,
- * búsqueda y ordenamiento. Permite devolver productos al inventario.
- */
 export default function AsignadosPage() {
-  const { state, addRecentActivity, updateAssignmentStatus } = useApp()
+  const { state, dispatch, addRecentActivity } = useApp()
+  const { toast } = useToast()
 
-
-  // Estado local para búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState("")
-  const [previousSearchTerm, setPreviousSearchTerm] = useState("")
   const [filters, setFilters] = useState({
     estado: "Todos",
     categoria: "Todas",
     marca: "Todas",
   })
-
-  // Estado para ordenamiento de columnas
   const [sortConfig, setSortConfig] = useState<{
     key: string
     direction: "ascending" | "descending"
   } | null>(null)
-
-  // Estado para el diálogo de confirmación de devolución
   const [isReturnConfirmOpen, setIsReturnConfirmOpen] = useState(false)
   const [assignmentToReturn, setAssignmentToReturn] = useState<any>(null)
 
-  /**
-   * Maneja la solicitud de devolución de un artículo asignado
-   * @param assignment El objeto de asignación a devolver
-   */
   const handleReturnAssignment = (assignment: any) => {
     setAssignmentToReturn(assignment)
     setIsReturnConfirmOpen(true)
   }
 
-  /**
-   * Confirma la devolución del artículo y actualiza el estado
-   */
   const confirmReturn = () => {
     if (assignmentToReturn) {
-      // Usar updateAssignmentStatus para marcar como devuelto
-      updateAssignmentStatus(assignmentToReturn.id, "Devuelto");
-
+      dispatch({ type: "RETURN_ASSIGNMENT", payload: assignmentToReturn.id })
       addRecentActivity({
         type: "Devolución de Asignación",
-        description: `Producto ${assignmentToReturn.articuloNombre} (N/S: ${assignmentToReturn.numeroSerie || "N/A"
-          }) devuelto por ${assignmentToReturn.asignadoA}.`,
+        description: `Producto ${assignmentToReturn.articulo} (N/S: ${
+          assignmentToReturn.numeroSerie || "N/A"
+        }) devuelto por ${assignmentToReturn.asignadoA}.`,
         date: new Date().toLocaleString(),
         details: {
           assignmentId: assignmentToReturn.id,
-          productName: assignmentToReturn.articuloNombre,
+          productName: assignmentToReturn.articulo,
           assignedTo: assignmentToReturn.asignadoA,
         },
       })
-      showSuccess({
+      toast({
         title: "Asignación Devuelta",
-        description: `El producto ${assignmentToReturn.articuloNombre} ha sido devuelto al inventario.`,
+        description: `El producto ${assignmentToReturn.articulo} ha sido devuelto al inventario.`,
       })
       setIsReturnConfirmOpen(false)
       setAssignmentToReturn(null)
     }
   }
 
-  /**
-   * Filtra las asignaciones según los criterios de búsqueda y filtros establecidos
-   */
   const filteredAssignments = useMemo(() => {
-    // Extraer datos de inventario para tener información de categoría y marca
-    const inventoryMap = new Map(
-      (state.inventoryData || []).map(item => [item.id, item])
-    )
-
-    const filtered = (state.asignadosData || []).filter((assignment) => {
-      const inventoryItem = inventoryMap.get(assignment.articuloId)
-
+    const filtered = state.asignadosData.filter((assignment) => {
       const matchesSearch =
-        (assignment.articuloNombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (assignment.articulo || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (assignment.numeroSerie || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (assignment.asignadoA || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (assignment.estado || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -125,28 +83,25 @@ export default function AsignadosPage() {
       const matchesEstado = filters.estado === "Todos" || assignment.estado === filters.estado
       const matchesCategoria =
         filters.categoria === "Todas" ||
-        (inventoryItem?.categoria && inventoryItem.categoria.toLowerCase() === filters.categoria.toLowerCase())
+        (assignment.categoria && assignment.categoria.toLowerCase() === filters.categoria.toLowerCase())
       const matchesMarca =
         filters.marca === "Todas" ||
-        (inventoryItem?.marca && inventoryItem.marca.toLowerCase() === filters.marca.toLowerCase())
+        (assignment.marca && assignment.marca.toLowerCase() === filters.marca.toLowerCase())
 
       return matchesSearch && matchesEstado && matchesCategoria && matchesMarca
     })
 
     return filtered
-  }, [state.asignadosData, state.inventoryData, searchTerm, filters])
+  }, [state.asignadosData, searchTerm, filters])
 
-  /**
-   * Ordena las asignaciones según la columna y dirección seleccionada
-   */
   const sortedAssignments = useMemo(() => {
     if (!sortConfig) {
       return filteredAssignments
     }
 
     const sorted = [...filteredAssignments].sort((a, b) => {
-      const aValue = safeAccess(a, sortConfig.key)
-      const bValue = safeAccess(b, sortConfig.key)
+      const aValue = a[sortConfig.key] || ""
+      const bValue = b[sortConfig.key] || ""
 
       if (aValue < bValue) {
         return sortConfig.direction === "ascending" ? -1 : 1
@@ -159,10 +114,6 @@ export default function AsignadosPage() {
     return sorted
   }, [filteredAssignments, sortConfig])
 
-  /**
-   * Cambia la configuración de ordenamiento de una columna
-   * @param key La clave de la columna a ordenar
-   */
   const requestSort = (key: string) => {
     let direction: "ascending" | "descending" = "ascending"
     if (sortConfig && sortConfig.key === key && sortConfig.direction === "ascending") {
@@ -171,50 +122,6 @@ export default function AsignadosPage() {
     setSortConfig({ key, direction })
   }
 
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value)
-
-    // Si es una búsqueda nueva y no está vacía
-    if (value.length >= 3 && value !== previousSearchTerm) {
-      setPreviousSearchTerm(value)
-
-      // Simular búsqueda y verificar resultados después de un breve delay
-      setTimeout(() => {
-        if (filteredAssignments.length === 0 && value === searchTerm) {
-          // Buscar sugerencias similares en todo el inventario
-          const suggestions = state.asignadosData
-            .filter(item =>
-              item.articuloNombre.toLowerCase().includes(value.toLowerCase().substring(0, 3)) ||
-              item.asignadoA.toLowerCase().includes(value.toLowerCase().substring(0, 3))
-            )
-            .slice(0, 3)
-            .map(item => item.articuloNombre)
-
-          if (suggestions.length > 0) {
-            showWarning({
-              title: "Sin resultados exactos",
-              description: `¿Te refieres a: ${suggestions.join(", ")}?`,
-            })
-          } else {
-            showWarning({
-              title: "Sin resultados",
-              description: `No se encontraron asignaciones que coincidan con "${value}"`,
-            })
-          }
-        } else if (filteredAssignments.length > 0 && value === searchTerm) {
-          showInfo({
-            title: "Búsqueda completada",
-            description: `${filteredAssignments.length} asignación(es) encontrada(s)`,
-          })
-        }
-      }, 500)
-    }
-  }
-
-  /**
-   * Obtiene el ícono de ordenamiento para una columna específica
-   * @param key La clave de la columna
-   */
   const getSortIcon = (key: string) => {
     if (!sortConfig || sortConfig.key !== key) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -225,41 +132,39 @@ export default function AsignadosPage() {
     return <ArrowUpDown className="ml-2 h-4 w-4" />
   }
 
-  // Extrae categorías, marcas y estados únicos para los filtros usando el inventario
   const allCategories = useMemo(() => {
-    const categories = new Set((state.inventoryData || []).map(p => p.categoria).filter(Boolean))
+    const categories = new Set(state.asignadosData.map((p) => p.categoria).filter(Boolean))
     return ["Todas", ...Array.from(categories).sort()]
-  }, [state.inventoryData])
+  }, [state.asignadosData])
 
   const allBrands = useMemo(() => {
-    const brands = new Set((state.inventoryData || []).map(p => p.marca).filter(Boolean))
+    const brands = new Set(state.asignadosData.map((p) => p.marca).filter(Boolean))
     return ["Todas", ...Array.from(brands).sort()]
-  }, [state.inventoryData])
+  }, [state.asignadosData])
 
   const allStatuses = useMemo(() => {
-    const statuses = new Set((state.asignadosData || []).map(p => p.estado).filter(Boolean))
+    const statuses = new Set(state.asignadosData.map((p) => p.estado).filter(Boolean))
     return ["Todos", ...Array.from(statuses).sort()]
   }, [state.asignadosData])
 
   return (
-    <div className="space-y-6">
-      <div className="text-muted-foreground mb-6">
-        Gestiona los productos asignados a usuarios o departamentos
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Artículos Asignados</h1>
+        <Button onClick={() => console.log("Asignar Masivo clicked")}>Asignar Masivo</Button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            type="search"
-            placeholder="Buscar por nombre, número de serie o usuario..."
-            className="pl-8"
+            type="text"
+            placeholder="Buscar por artículo, N/S, asignado a..."
             value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-lg bg-background pl-8"
           />
         </div>
-        <Button onClick={() => console.log("Asignar Masivo clicked")}>Asignar Masivo</Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">
@@ -267,23 +172,18 @@ export default function AsignadosPage() {
               Filtros
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px]">
+          <DropdownMenuContent align="end">
             <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
             <DropdownMenuSeparator />
-
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span>Estado: {filters.estado}</span>
-              </DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>Estado</DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   {allStatuses.map((status) => (
                     <DropdownMenuCheckboxItem
                       key={status}
                       checked={filters.estado === status}
-                      onCheckedChange={() =>
-                        setFilters((prev) => ({ ...prev, estado: status }))
-                      }
+                      onCheckedChange={() => setFilters({ ...filters, estado: status })}
                     >
                       {status}
                     </DropdownMenuCheckboxItem>
@@ -291,20 +191,15 @@ export default function AsignadosPage() {
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span>Categoría: {filters.categoria}</span>
-              </DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>Categoría</DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   {allCategories.map((category) => (
                     <DropdownMenuCheckboxItem
                       key={category}
                       checked={filters.categoria === category}
-                      onCheckedChange={() =>
-                        setFilters((prev) => ({ ...prev, categoria: category }))
-                      }
+                      onCheckedChange={() => setFilters({ ...filters, categoria: category })}
                     >
                       {category}
                     </DropdownMenuCheckboxItem>
@@ -312,20 +207,15 @@ export default function AsignadosPage() {
                 </DropdownMenuSubContent>
               </DropdownMenuPortal>
             </DropdownMenuSub>
-
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <span>Marca: {filters.marca}</span>
-              </DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>Marca</DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   {allBrands.map((brand) => (
                     <DropdownMenuCheckboxItem
                       key={brand}
                       checked={filters.marca === brand}
-                      onCheckedChange={() =>
-                        setFilters((prev) => ({ ...prev, marca: brand }))
-                      }
+                      onCheckedChange={() => setFilters({ ...filters, marca: brand })}
                     >
                       {brand}
                     </DropdownMenuCheckboxItem>
@@ -341,9 +231,9 @@ export default function AsignadosPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead onClick={() => requestSort("articuloNombre")} className="cursor-pointer">
+              <TableHead onClick={() => requestSort("articulo")} className="cursor-pointer">
                 Artículo
-                {getSortIcon("articuloNombre")}
+                {getSortIcon("articulo")}
               </TableHead>
               <TableHead onClick={() => requestSort("numeroSerie")} className="cursor-pointer">
                 Número de Serie
@@ -373,7 +263,7 @@ export default function AsignadosPage() {
             ) : (
               sortedAssignments.map((assignment) => (
                 <TableRow key={assignment.id}>
-                  <TableCell className="font-medium">{assignment.articuloNombre}</TableCell>
+                  <TableCell className="font-medium">{assignment.articulo}</TableCell>
                   <TableCell>{assignment.numeroSerie || "N/A"}</TableCell>
                   <TableCell>{assignment.asignadoA}</TableCell>
                   <TableCell>{assignment.fechaAsignacion}</TableCell>
@@ -382,17 +272,8 @@ export default function AsignadosPage() {
                   </TableCell>
                   <TableCell>
                     <ActionMenu
-                      actions={[
-                        {
-                          label: "Ver detalles",
-                          onClick: () => console.log("Ver detalles", assignment.id),
-                          icon: ArrowUpRight
-                        },
-                        {
-                          label: "Devolver",
-                          onClick: () => handleReturnAssignment(assignment),
-                        }
-                      ]}
+                      onReturn={() => handleReturnAssignment(assignment)}
+                      product={assignment} // Pass assignment as product for generic ActionMenu
                     />
                   </TableCell>
                 </TableRow>
@@ -406,6 +287,8 @@ export default function AsignadosPage() {
         open={isReturnConfirmOpen}
         onOpenChange={setIsReturnConfirmOpen}
         onConfirm={confirmReturn}
+        title="Confirmar Devolución"
+        description={`¿Estás seguro de que deseas devolver el producto "${assignmentToReturn?.articulo}" asignado a "${assignmentToReturn?.asignadoA}"?`}
       />
     </div>
   )

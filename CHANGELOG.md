@@ -5,23 +5,67 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 ## [Unreleased]
 
 ### Added
-- 
+- **Sistema Completo de Toasts Enterprise (55 implementaciones):**
+  - Toasts de progreso para operaciones masivas (Bulk Edit, Assign, Retire, Lend)
+  - Validación inteligente en tiempo real (números de serie duplicados, emails, fechas, costos)
+  - Estados de sistema y sincronización automática cada 30 segundos
+  - Búsqueda inteligente con sugerencias cuando no hay resultados
+  - Autoguardado con feedback de progreso para todas las operaciones CRUD
+- **Cumplimiento WCAG 2.1 AA:** Implementación completa de accesibilidad enterprise
+  - `role="alert"` y `aria-live="assertive"` en todos los toasts críticos
+  - Duraciones inteligentes (2-6 segundos) según criticidad del mensaje
+  - Soporte completo para lectores de pantalla y navegación por teclado
+- **Trazabilidad Absoluta:** Integración con sistema de actividades recientes
+  - Cada acción crítica registra contexto completo (usuario, fecha, detalles)
+  - Historial inmutable para auditorías CFE
+  - Cadena de responsabilidad clara en flujos de aprobación
+- Implementación de detección de dispositivo mediante hook personalizado `useDevice` para optimizar la experiencia de usuario en diferentes dispositivos
+- **Documentación Enterprise:** 
+  - Guías de implementación de toasts para diferentes escenarios
+  - Mejores prácticas de UX para software gubernamental
+  - Documentación de API de toasts con ejemplos de uso
 
 ### Changed
-- 
+- **Migración Completa del Sistema de Toasts:** De básico Radix UI a sistema enterprise ultra-limpio
+  - APIs mejoradas: `showSuccess()`, `showError()`, `showWarning()`, `showInfo()`
+  - Fondos sólidos profesionales con sutiles efectos de sombra
+  - Máximo 3 toasts simultáneos con queue inteligente
+  - Soporte completo para modo oscuro
+- **UX Contextual Mejorada:** Toasts específicos por rol de usuario
+  - Administrador: Feedback completo para gestión crítica
+  - Editor: Toasts ágiles para flujo de campo eficiente
+  - Lector: Feedback mínimo, no invasivo
+- Estandarización de la estructura de layout en toda la aplicación siguiendo las mejores prácticas de Next.js App Router
+- Refactorización del componente `app/(app)/inventario/page.tsx` para usar correctamente el layout del grupo de rutas
+- Fusión de la funcionalidad completa de configuración en `app/(app)/configuracion/page.tsx`
 
 ### Deprecated
-- 
+- Marcado como obsoleto el uso directo de `AppLayout` en páginas individuales
 
 ### Removed
 - Eliminada página duplicada en `app/dashboard/page.tsx` que causaba conflicto de rutas con `app/(app)/dashboard/page.tsx`
+- Eliminado componente duplicado `app/app-layout.tsx` para evitar confusiones con `components/app-layout.tsx`
+- Eliminada ruta duplicada `app/configuracion/page.tsx` que causaba conflicto con `app/(app)/configuracion/page.tsx`
+- **Toasts Invasivos Eliminados:** Removidas notificaciones innecesarias que interrumpían el flujo
+  - Toasts de configuración de columnas (visibilidad, ordenamiento)
+  - Notificaciones de cambio de vista (inmediatamente visible)
+  - Feedback excesivo de filtros básicos
 
 ### Fixed
+- **Problema de Transparencia en Toasts:** Corregidos fondos casi transparentes
+  - Implementados fondos 100% sólidos: `bg-emerald-50` (sin transparencia)
+  - Modo oscuro sólido: `dark:bg-emerald-900`
+  - Efectos elegantes: `shadow-lg shadow-emerald-500/25`
+  - Anillos definidos: `ring-1 ring-emerald-200`
 - Resuelto error de compilación "You cannot have two parallel pages that resolve to the same path" al eliminar la página duplicada
 - Corregido error sintáctico en `app/(app)/dashboard/page.tsx` eliminando comentarios JSX inválidos y mejorando la estructura
+- Solucionada inconsistencia en la aplicación de layouts entre diferentes páginas de la aplicación
+- Resuelto conflicto de rutas duplicadas en la sección de configuración
 
 ### Security
-- 
+- **Validación Segura:** Toasts no exponen información técnica sensible
+- **Sanitización de Entradas:** Validación en tiempo real previene errores de seguridad
+- **Logs de Auditoría:** Trazabilidad completa para cumplimiento gubernamental CFE
 
 ---
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { LogIn, Info, HelpCircle, Loader2, PackageMinus, PackagePlus } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo } from "@/hooks/use-toast"
 import { useApp } from "@/contexts/app-context"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { QuickLoadModal } from "@/components/quick-load-modal"
@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   const { state, setUser, addRecentActivity } = useApp()
   const router = useRouter()
-  const { toast } = useToast()
+
 
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
@@ -63,16 +63,15 @@ export default function LoginPage() {
         date: new Date().toLocaleString(),
         details: { userId: foundUser.id, userName: foundUser.nombre, userRole: foundUser.rol },
       })
-      toast({
+      showSuccess({
         title: "Inicio de sesión exitoso",
-        description: `Bienvenido, ${foundUser.nombre}!`,
+        description: `Bienvenido, ${foundUser.nombre}!`
       })
       router.push("/dashboard")
     } else {
-      toast({
+      showError({
         title: "Error de inicio de sesión",
-        description: "Credenciales incorrectas. Por favor, inténtalo de nuevo.",
-        variant: "destructive",
+        description: "Credenciales incorrectas. Por favor, inténtalo de nuevo."
       })
     }
 

@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
+import { showSuccess, showInfo } from "@/hooks/use-toast"
 import { Loader2, Edit } from "lucide-react"
 import { BrandCombobox } from "@/components/brand-combobox"
 import { useApp } from "@/contexts/app-context"
@@ -36,22 +36,31 @@ export function BulkEditModal({ open, onOpenChange, selectedProductIds, onSucces
     descripcion: "",
   })
   const [isConfirmEditorOpen, setIsConfirmEditorOpen] = useState(false)
-  const { toast } = useToast()
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   const executeBulkEdit = () => {
+    // Toast de progreso inmediato
+    showInfo({
+      title: "Procesando edición masiva...",
+      description: `Aplicando cambios a ${selectedProductIds.length} productos`
+    })
+
     // Simular edición masiva
     setTimeout(() => {
       setIsLoading(false)
       onOpenChange(false)
       setFormData({ categoria: "", marca: "", estado: "", descripcion: "" })
-      toast({
+
+      // Toast de éxito con más contexto
+      showSuccess({
         title: "Edición masiva completada",
-        description: `${selectedProductIds.length} productos han sido actualizados exitosamente.`,
+        description: `${selectedProductIds.length} productos actualizados exitosamente`
       })
+
       addRecentActivity({
         type: "Edición Masiva",
         description: `Se editaron ${selectedProductIds.length} productos`,
@@ -97,9 +106,9 @@ export function BulkEditModal({ open, onOpenChange, selectedProductIds, onSucces
         },
       ],
     })
-    toast({
+    showInfo({
       title: "Solicitud enviada",
-      description: "Tu edición masiva ha sido enviada a un administrador para aprobación.",
+      description: "Tu edición masiva ha sido enviada a un administrador para aprobación."
     })
     onOpenChange(false)
     setFormData({ categoria: "", marca: "", estado: "", descripcion: "" }) // Clear form after sending request

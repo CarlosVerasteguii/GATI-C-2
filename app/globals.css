@@ -10,20 +10,26 @@
     --card-foreground: 20 14.3% 4.1%;
     --popover: 0 0% 100%;
     --popover-foreground: 20 14.3% 4.1%;
-    --primary: 158 100% 28%; /* CFE Green */
-    --primary-foreground: 0 0% 100%; /* White */
-    --primary-hover: 158 100% 20%; /* Darker CFE Green for hover */
+    --primary: 158 100% 28%;
+    /* CFE Green */
+    --primary-foreground: 0 0% 100%;
+    /* White */
+    --primary-hover: 158 100% 20%;
+    /* Darker CFE Green for hover */
     --secondary: 60 4.8% 95.9%;
     --secondary-foreground: 24 9.8% 10%;
     --muted: 60 4.8% 95.9%;
     --muted-foreground: 25 5.3% 44.7%;
     --accent: 60 4.8% 95.9%;
     --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84% 60%; /* Red */
-    --destructive-foreground: 0 0% 100%; /* White */
+    --destructive: 0 84% 60%;
+    /* Red */
+    --destructive-foreground: 0 0% 100%;
+    /* White */
     --border: 20 5.9% 90%;
     --input: 20 5.9% 90%;
-    --ring: 158 100% 28%; /* CFE Green for focus rings */
+    --ring: 158 100% 28%;
+    /* CFE Green for focus rings */
     --radius: 0.5rem;
 
     /* CFE Semantic Colors (already defined in tailwind.config.ts, but keeping here for consistency if needed) */
@@ -50,9 +56,12 @@
     --card-foreground: 60 9.1% 97.8%;
     --popover: 20 14.3% 4.1%;
     --popover-foreground: 60 9.1% 97.8%;
-    --primary: 158 100% 28%; /* CFE Green */
-    --primary-foreground: 0 0% 100%; /* White */
-    --primary-hover: 158 100% 20%; /* Darker CFE Green for hover */
+    --primary: 158 100% 28%;
+    /* CFE Green */
+    --primary-foreground: 0 0% 100%;
+    /* White */
+    --primary-hover: 158 100% 20%;
+    /* Darker CFE Green for hover */
     --secondary: 12 6.5% 15.1%;
     --secondary-foreground: 60 9.1% 97.8%;
     --muted: 12 6.5% 15.1%;
@@ -63,7 +72,8 @@
     --destructive-foreground: 60 9.1% 97.8%;
     --border: 12 6.5% 15.1%;
     --input: 12 6.5% 15.1%;
-    --ring: 158 100% 28%; /* CFE Green for focus rings */
+    --ring: 158 100% 28%;
+    /* CFE Green for focus rings */
   }
 }
 
@@ -71,6 +81,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -156,4 +167,25 @@
 
 .border-cfe-green\/30 {
   border-color: rgba(0, 142, 90, 0.3);
+}
+
+/* Enhanced Toast System Styles - Minimal and Clean */
+.toast-enhanced {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Subtle hover effects for toasts */
+.toast-container:hover {
+  transform: translateY(-1px);
+  transition: transform 0.2s ease-out;
+}
+
+/* Reduce opacity when multiple toasts are present */
+.toast-container:not(:first-child) {
+  opacity: 0.95;
+}
+
+.toast-container:not(:first-child):not(:second-child) {
+  opacity: 0.9;
 }

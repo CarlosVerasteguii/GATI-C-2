@@ -17,7 +17,7 @@ import { CalendarIcon, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
+import { showError, showSuccess, showInfo, showWarning } from "@/hooks/use-toast"
 import { useApp } from "@/contexts/app-context"
 
 interface LendModalProps {
@@ -34,7 +34,7 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
   const [returnDate, setReturnDate] = useState<Date | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
 
-  const { toast } = useToast()
+
 
   useEffect(() => {
     if (!open) {
@@ -63,7 +63,7 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
           returnDate: returnDate ? format(returnDate, "PPP") : "N/A",
         },
       })
-      toast({
+      showSuccess({
         title: "Préstamo registrado",
         description: `${product.nombre} ha sido prestado a ${lentToName}.`,
       })
@@ -74,10 +74,9 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
 
   const handleLend = () => {
     if (!lentToName || !returnDate) {
-      toast({
+      showError({
         title: "Campos incompletos",
-        description: "Por favor, completa el nombre del usuario y la fecha de devolución.",
-        variant: "destructive",
+        description: "Por favor, completa el nombre del usuario y la fecha de devolución."
       })
       return
     }
@@ -105,7 +104,7 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
           },
         ],
       })
-      toast({
+      showInfo({
         title: "Solicitud enviada",
         description: `Tu solicitud de préstamo para ${product.nombre} ha sido enviada a un administrador para aprobación.`,
       })
@@ -140,7 +139,15 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
               id="lentToEmail"
               type="email"
               value={lentToEmail}
-              onChange={(e) => setLentToEmail(e.target.value)}
+              onChange={(e) => {
+                setLentToEmail(e.target.value)
+                if (e.target.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value)) {
+                  showWarning({
+                    title: "Email inválido",
+                    description: "Por favor, ingresa un email válido"
+                  })
+                }
+              }}
               placeholder="correo@ejemplo.com"
             />
           </div>
@@ -157,7 +164,20 @@ export function LendModal({ open, onOpenChange, product, onSuccess }: LendModalP
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={returnDate} onSelect={setReturnDate} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={returnDate}
+                  onSelect={(date) => {
+                    setReturnDate(date)
+                    if (date && date < new Date(new Date().setHours(0, 0, 0, 0))) {
+                      showWarning({
+                        title: "Fecha en el pasado",
+                        description: "La fecha de devolución no puede ser anterior a hoy"
+                      })
+                    }
+                  }}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
           </div>
