@@ -138,8 +138,6 @@ interface ColumnDefinition {
   fixed?: "start" | "end"
 }
 
-const ITEMS_PER_PAGE = 10
-
 // Define all possible columns and their properties
 const allColumns: ColumnDefinition[] = [
   { id: "nombre", label: "Nombre", defaultVisible: true, sortable: true, fixed: "start" },
@@ -174,6 +172,25 @@ export default function InventarioPage() {
 
   // Usar useReducer para manejar acciones locales
   const [localState, dispatch] = useReducer(inventoryReducer, { lastRefresh: Date.now() });
+
+  // Reemplazar la constante ITEMS_PER_PAGE por un estado
+  const [itemsPerPage, setItemsPerPage] = useState<number>(() => {
+    const userId = state.user?.id;
+    const pageId = "inventario";
+    
+    // Obtener de preferencias de usuario si están disponibles
+    if (userId &&
+        state.userColumnPreferences &&
+        Array.isArray(state.userColumnPreferences) &&
+        state.userColumnPreferences.some(pref => pref.page === pageId)) {
+      const userPrefs = state.userColumnPreferences.find(pref => pref.page === pageId);
+      if (userPrefs && userPrefs.itemsPerPage) {
+        return userPrefs.itemsPerPage;
+      }
+    }
+    // Valor por defecto
+    return 25;
+  });
 
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([])
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false)
@@ -447,9 +464,9 @@ export default function InventarioPage() {
   ])
 
   // Paginación
-  const totalPages = Math.ceil(sortedAndFilteredData.length / ITEMS_PER_PAGE)
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
+  const totalPages = Math.ceil(sortedAndFilteredData.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
   const paginatedData = sortedAndFilteredData.slice(startIndex, endIndex)
 
   const selectedProducts = state.inventoryData.filter((item) => selectedRowIds.includes(item.id))
@@ -1614,30 +1631,75 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Mostrando {paginatedData.length} de {sortedAndFilteredData.length} productos
-        </p>
+      {/* Paginación */}
+      <div className="flex items-center justify-between space-x-2 py-4">
         <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Anterior
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage((prev) => prev + 1)}
-            disabled={currentPage >= totalPages}
-          >
-            Siguiente
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            Mostrando <span className="font-medium">{startIndex + 1}</span> a{" "}
+            <span className="font-medium">{Math.min(endIndex, sortedAndFilteredData.length)}</span> de{" "}
+            <span className="font-medium">{sortedAndFilteredData.length}</span> resultados
+          </p>
+        </div>
+        <div className="flex items-center space-x-6">
+          {/* Selector de ítems por página */}
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">Ítems por página:</p>
+            <Select 
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => {
+                const newItemsPerPage = parseInt(value);
+                setItemsPerPage(newItemsPerPage);
+                setCurrentPage(1); // Resetear a la primera página
+                
+                // Guardar en preferencias de usuario
+                if (state.user?.id) {
+                  appDispatch({
+                    type: 'UPDATE_USER_COLUMN_PREFERENCES',
+                    payload: {
+                      userId: state.user.id,
+                      pageId: "inventario",
+                      columns: visibleColumns,
+                      itemsPerPage: newItemsPerPage
+                    }
+                  });
+                }
+              }}
+            >
+              <SelectTrigger className="w-[80px]">
+                <SelectValue placeholder="25" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+                <SelectItem value="250">250</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Página anterior</span>
+            </Button>
+            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+              Página {currentPage} de {totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+              <span className="sr-only">Página siguiente</span>
+            </Button>
+          </div>
         </div>
       </div>
 

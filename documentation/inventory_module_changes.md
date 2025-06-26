@@ -346,4 +346,62 @@ Aunque se han implementado importantes mejoras, todavía hay áreas que pueden s
 
 Las mejoras implementadas han resuelto los problemas más críticos del módulo de inventario, mejorando significativamente la experiencia del usuario y la funcionalidad. La organización por pestañas facilita la gestión de productos con muchos campos, mientras que la vista alternativa de tarjetas proporciona una forma más visual de explorar el inventario.
 
-Se han corregido errores importantes que afectaban la funcionalidad básica, como el manejo de campos null/undefined, la implementación correcta de las acciones del contexto, y la validación de formularios en la edición de productos. Estas correcciones aseguran que el módulo funcione de manera estable y confiable. 
+Se han corregido errores importantes que afectaban la funcionalidad básica, como el manejo de campos null/undefined, la implementación correcta de las acciones del contexto, y la validación de formularios en la edición de productos. Estas correcciones aseguran que el módulo funcione de manera estable y confiable.
+
+## Historial de Cambios
+
+### 2023-10-15: Mejoras en la Interfaz de Usuario
+- Añadido modo de visualización en tarjetas para vista alternativa
+- Implementado filtrado por múltiples criterios
+- Mejorada la presentación de estados con códigos de color
+
+### 2023-11-02: Optimización de Rendimiento
+- Implementada paginación del lado del cliente
+- Reducido tiempo de carga inicial
+- Añadido caché de datos para operaciones frecuentes
+
+### 2023-11-20: Integración con Sistema de Documentos
+- Añadida pestaña de documentos en detalles de producto
+- Implementada funcionalidad de subida y previsualización
+- Integración con historial de cambios
+
+### 2024-XX-XX: Configuración de Ítems por Página
+- Implementada funcionalidad para configurar la cantidad de ítems mostrados por página
+- Valores disponibles: 25 (por defecto), 50, 100 y 250 ítems
+- Persistencia de la preferencia por usuario en el contexto de la aplicación
+- Mejora de la interfaz de paginación con información más detallada
+- Optimización del rendimiento para manejar grandes cantidades de datos
+
+## Características Principales
+
+### Filtrado Avanzado
+El módulo de inventario permite filtrar por:
+- Texto libre (búsqueda en nombre, marca, modelo, etc.)
+- Categoría
+- Marca
+- Estado
+
+### Gestión de Columnas
+Los usuarios pueden personalizar qué columnas desean ver en la tabla de inventario:
+- Columnas básicas: Nombre, Marca, Modelo, etc.
+- Columnas avanzadas: Proveedor, Fecha de Adquisición, etc.
+- Las preferencias se guardan por usuario
+
+### Acciones Masivas
+Se pueden realizar las siguientes acciones sobre múltiples productos:
+- Edición masiva de propiedades comunes
+- Asignación a usuarios
+- Préstamo a usuarios
+- Retiro del inventario
+
+### Configuración de Visualización
+- Modo tabla (vista detallada)
+- Modo tarjetas (vista compacta)
+- Configuración de ítems por página (25, 50, 100, 250)
+- Ordenamiento por cualquier columna
+
+## Próximas Mejoras Planificadas
+- Exportación a Excel/CSV
+- Importación masiva con validación
+- Historial detallado por producto
+- Integración con sistema de códigos QR/barras 

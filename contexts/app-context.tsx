@@ -118,6 +118,7 @@ interface PendingTask {
 interface UserColumnPreference {
   page: string
   preferences: { id: string; label: string; visible: boolean }[]
+  itemsPerPage?: number
 }
 
 interface AppState {
@@ -492,7 +493,7 @@ type AppAction =
   | { type: 'UPDATE_INVENTORY_ITEM_STATUS'; payload: { id: number; status: string } }
   | { type: 'ADD_RECENT_ACTIVITY'; payload: RecentActivity }
   | { type: 'UPDATE_PENDING_TASK'; payload: { id: number; updates: Partial<PendingTask> } }
-  | { type: 'UPDATE_USER_COLUMN_PREFERENCES'; payload: { userId: number; pageId: string; columns: string[] } }
+  | { type: 'UPDATE_USER_COLUMN_PREFERENCES'; payload: { userId: number; pageId: string; columns: string[]; itemsPerPage?: number } }
   | { type: 'UPDATE_USER_THEME'; payload: string }
   | { type: 'UPDATE_MARCAS'; payload: string[] }
   | { type: 'ADD_PENDING_REQUEST'; payload: PendingActionRequest };
@@ -524,7 +525,7 @@ interface AppContextType {
   addUserToUsersData: (user: User) => void
   addPendingTask: (task: PendingTask) => void
   updatePendingTask: (taskId: number, updates: Partial<PendingTask>) => void
-  updateUserColumnPreferences: (userId: number, pageId: string, columns: string[]) => void
+  updateUserColumnPreferences: (userId: number, pageId: string, columns: string[], itemsPerPage?: number) => void
   updateUserTheme: (theme: string) => void
   updateMarcas: (marcas: string[]) => void
 }
@@ -683,15 +684,64 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   const updateUserColumnPreferences = useCallback(
-    (userId: number, pageId: string, columns: string[]) => {
-      setState((prevState) => ({
-        ...prevState,
-        userColumnPreferences: prevState.userColumnPreferences.map((pref) =>
-          pref.page === pageId ? { ...pref, preferences: columns.map((column) => ({ id: column, label: column, visible: true })) } : pref,
-        ),
-      }))
+    (userId: number, pageId: string, columns: string[], itemsPerPage?: number) => {
+      setState((prevState) => {
+        // Verificar si ya existe una preferencia para esta página
+        const existingPrefIndex = prevState.userColumnPreferences.findIndex(pref => pref.page === pageId);
+        
+        if (existingPrefIndex !== -1) {
+          // Actualizar preferencia existente
+          const updatedPreferences = [...prevState.userColumnPreferences];
+          updatedPreferences[existingPrefIndex] = {
+            ...updatedPreferences[existingPrefIndex],
+            preferences: updatedPreferences[existingPrefIndex].preferences.map(p => ({
+              ...p,
+              visible: columns.includes(p.id)
+            })),
+            itemsPerPage: itemsPerPage !== undefined ? itemsPerPage : updatedPreferences[existingPrefIndex].itemsPerPage
+          };
+          
+          return {
+            ...prevState,
+            userColumnPreferences: updatedPreferences
+          };
+        } else {
+          // Crear nueva preferencia
+          const allColumnsForPage = pageId === "inventario" 
+            ? [
+                { id: "nombre", label: "Nombre", visible: true },
+                { id: "marca", label: "Marca", visible: true },
+                { id: "modelo", label: "Modelo", visible: true },
+                { id: "numeroSerie", label: "N/S", visible: true },
+                { id: "categoria", label: "Categoría", visible: true },
+                { id: "estado", label: "Estado", visible: true },
+                { id: "proveedor", label: "Proveedor", visible: false },
+                { id: "fechaAdquisicion", label: "Fecha Adquisición", visible: false },
+                { id: "contratoId", label: "Contrato ID", visible: false },
+                { id: "asignadoA", label: "Asignado A", visible: false },
+                { id: "fechaAsignacion", label: "Fecha Asignación", visible: false },
+                { id: "qty", label: "QTY", visible: true }
+              ].map(col => ({
+                ...col,
+                visible: columns.includes(col.id)
+              }))
+            : columns.map(column => ({ id: column, label: column, visible: true }));
+          
+          return {
+            ...prevState,
+            userColumnPreferences: [
+              ...prevState.userColumnPreferences,
+              {
+                page: pageId,
+                preferences: allColumnsForPage,
+                itemsPerPage
+              }
+            ]
+          };
+        }
+      });
     },
-    [],
+    []
   )
 
   const updateUserTheme = useCallback((theme: string) => {
