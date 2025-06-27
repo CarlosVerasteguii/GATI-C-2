@@ -3,7 +3,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from "react"
 
 // Definición de tipos para el estado de la aplicación
-interface InventoryItem {
+export interface InventoryItem {
   id: number
   nombre: string
   marca: string
@@ -15,7 +15,9 @@ interface InventoryItem {
   numeroSerie: string | null
   fechaIngreso: string // YYYY-MM-DD
   ubicacion?: string
-  proveedor?: string
+  proveedor?: string | null
+  fechaAdquisicion?: string | null
+  contratoId?: string | null
   costo?: number
   fechaCompra?: string
   garantia?: string
@@ -23,6 +25,9 @@ interface InventoryItem {
   mantenimiento?: string
   historialMantenimiento?: { date: string; description: string }[]
   documentosAdjuntos?: { name: string; url: string }[]
+  motivoRetiro?: string
+  asignadoA?: string | null
+  fechaAsignacion?: string | null
 }
 
 interface AsignadoItem {
@@ -121,6 +126,12 @@ interface UserColumnPreference {
   itemsPerPage?: number
 }
 
+interface UserFilterPreference {
+  userId: number
+  pageId: string
+  filters: Record<string, any>
+}
+
 interface AppState {
   user: User | null
   usersData: User[]
@@ -135,6 +146,7 @@ interface AppState {
   marcas: string[]
   retirementReasons: string[]
   userColumnPreferences: UserColumnPreference[]
+  userFilterPreferences: UserFilterPreference[]
   userTheme?: string // Añadimos el tema del usuario al estado
 }
 
@@ -485,6 +497,7 @@ const defaultInitialState: AppState = {
   marcas: ["Dell", "LG", "HyperX", "Logitech", "TP-Link", "HP", "Seagate", "Epson"],
   retirementReasons: ["Fin de vida útil", "Obsoleto", "Dañado", "Perdido", "Robado", "Donación"],
   userColumnPreferences: [],
+  userFilterPreferences: [],
 }
 
 // Definición de tipos para las acciones
@@ -494,6 +507,7 @@ type AppAction =
   | { type: 'ADD_RECENT_ACTIVITY'; payload: RecentActivity }
   | { type: 'UPDATE_PENDING_TASK'; payload: { id: number; updates: Partial<PendingTask> } }
   | { type: 'UPDATE_USER_COLUMN_PREFERENCES'; payload: { userId: number; pageId: string; columns: string[]; itemsPerPage?: number } }
+  | { type: 'UPDATE_USER_FILTER_PREFERENCES'; payload: { userId: number; pageId: string; filters: Record<string, any> } }
   | { type: 'UPDATE_USER_THEME'; payload: string }
   | { type: 'UPDATE_MARCAS'; payload: string[] }
   | { type: 'ADD_PENDING_REQUEST'; payload: PendingActionRequest };
@@ -505,7 +519,7 @@ interface AppContextType {
   updateInventory: (inventory: InventoryItem[]) => void
   addInventoryItem: (item: InventoryItem) => void
   updateInventoryItem: (id: number, updates: Partial<InventoryItem>) => void
-  updateInventoryItemStatus: (id: number, status: string) => void
+  updateInventoryItemStatus: (id: number, status: string, assignedTo?: string | null, additionalInfo?: any, retireReason?: string) => void
   removeInventoryItem: (id: number) => void
   updateAsignados: (asignados: AsignadoItem[]) => void
   addAssignment: (assignment: AsignadoItem) => void
@@ -526,6 +540,7 @@ interface AppContextType {
   addPendingTask: (task: PendingTask) => void
   updatePendingTask: (taskId: number, updates: Partial<PendingTask>) => void
   updateUserColumnPreferences: (userId: number, pageId: string, columns: string[], itemsPerPage?: number) => void
+  updateUserFilterPreferences: (userId: number, pageId: string, filters: Record<string, any>) => void
   updateUserTheme: (theme: string) => void
   updateMarcas: (marcas: string[]) => void
 }
@@ -688,7 +703,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       setState((prevState) => {
         // Verificar si ya existe una preferencia para esta página
         const existingPrefIndex = prevState.userColumnPreferences.findIndex(pref => pref.page === pageId);
-        
+
         if (existingPrefIndex !== -1) {
           // Actualizar preferencia existente
           const updatedPreferences = [...prevState.userColumnPreferences];
@@ -700,33 +715,33 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
             })),
             itemsPerPage: itemsPerPage !== undefined ? itemsPerPage : updatedPreferences[existingPrefIndex].itemsPerPage
           };
-          
+
           return {
             ...prevState,
             userColumnPreferences: updatedPreferences
           };
         } else {
           // Crear nueva preferencia
-          const allColumnsForPage = pageId === "inventario" 
+          const allColumnsForPage = pageId === "inventario"
             ? [
-                { id: "nombre", label: "Nombre", visible: true },
-                { id: "marca", label: "Marca", visible: true },
-                { id: "modelo", label: "Modelo", visible: true },
-                { id: "numeroSerie", label: "N/S", visible: true },
-                { id: "categoria", label: "Categoría", visible: true },
-                { id: "estado", label: "Estado", visible: true },
-                { id: "proveedor", label: "Proveedor", visible: false },
-                { id: "fechaAdquisicion", label: "Fecha Adquisición", visible: false },
-                { id: "contratoId", label: "Contrato ID", visible: false },
-                { id: "asignadoA", label: "Asignado A", visible: false },
-                { id: "fechaAsignacion", label: "Fecha Asignación", visible: false },
-                { id: "qty", label: "QTY", visible: true }
-              ].map(col => ({
-                ...col,
-                visible: columns.includes(col.id)
-              }))
+              { id: "nombre", label: "Nombre", visible: true },
+              { id: "marca", label: "Marca", visible: true },
+              { id: "modelo", label: "Modelo", visible: true },
+              { id: "numeroSerie", label: "N/S", visible: true },
+              { id: "categoria", label: "Categoría", visible: true },
+              { id: "estado", label: "Estado", visible: true },
+              { id: "proveedor", label: "Proveedor", visible: false },
+              { id: "fechaAdquisicion", label: "Fecha Adquisición", visible: false },
+              { id: "contratoId", label: "Contrato ID", visible: false },
+              { id: "asignadoA", label: "Asignado A", visible: false },
+              { id: "fechaAsignacion", label: "Fecha Asignación", visible: false },
+              { id: "qty", label: "QTY", visible: true }
+            ].map(col => ({
+              ...col,
+              visible: columns.includes(col.id)
+            }))
             : columns.map(column => ({ id: column, label: column, visible: true }));
-          
+
           return {
             ...prevState,
             userColumnPreferences: [
@@ -743,6 +758,42 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     },
     []
   )
+
+  const updateUserFilterPreferences = useCallback((userId: number, pageId: string, filters: Record<string, any>) => {
+    setState((prevState) => {
+      // Verificar si ya existe una preferencia para este usuario y página
+      const existingPrefIndex = prevState.userFilterPreferences.findIndex(
+        pref => pref.userId === userId && pref.pageId === pageId
+      );
+
+      if (existingPrefIndex !== -1) {
+        // Actualizar preferencia existente
+        const updatedPreferences = [...prevState.userFilterPreferences];
+        updatedPreferences[existingPrefIndex] = {
+          ...updatedPreferences[existingPrefIndex],
+          filters
+        };
+
+        return {
+          ...prevState,
+          userFilterPreferences: updatedPreferences
+        };
+      } else {
+        // Crear nueva preferencia
+        return {
+          ...prevState,
+          userFilterPreferences: [
+            ...prevState.userFilterPreferences,
+            {
+              userId,
+              pageId,
+              filters
+            }
+          ]
+        };
+      }
+    });
+  }, []);
 
   const updateUserTheme = useCallback((theme: string) => {
     setState((prevState) => ({
@@ -811,6 +862,25 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           return prev;
         });
         break;
+      case 'UPDATE_USER_FILTER_PREFERENCES':
+        setState(prev => {
+          const existingPreference = prev.userFilterPreferences.find(p => p.pageId === action.payload.pageId);
+          if (existingPreference) {
+            return {
+              ...prev,
+              userFilterPreferences: prev.userFilterPreferences.map(p =>
+                p.pageId === action.payload.pageId
+                  ? {
+                    ...p,
+                    filters: action.payload.filters
+                  }
+                  : p
+              ),
+            };
+          }
+          return prev;
+        });
+        break;
       case 'UPDATE_USER_THEME':
         setState(prev => ({
           ...prev,
@@ -842,8 +912,22 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       updateInventory,
       addInventoryItem,
       updateInventoryItem,
-      updateInventoryItemStatus: (id: number, status: string) => {
-        updateInventoryItem(id, { estado: status as "Disponible" | "Asignado" | "Prestado" | "Retirado" | "En Mantenimiento" | "PENDIENTE_DE_RETIRO" })
+      updateInventoryItemStatus: (id: number, status: string, assignedTo?: string | null, additionalInfo?: any, retireReason?: string) => {
+        const updates: Partial<InventoryItem> = {
+          estado: status as "Disponible" | "Asignado" | "Prestado" | "Retirado" | "En Mantenimiento" | "PENDIENTE_DE_RETIRO"
+        }
+
+        // Añadir campos adicionales según el estado
+        if (status === "Asignado" && assignedTo) {
+          updates.asignadoA = assignedTo
+          updates.fechaAsignacion = new Date().toISOString().split("T")[0]
+        }
+
+        if (status === "Retirado" && retireReason) {
+          updates.motivoRetiro = retireReason
+        }
+
+        updateInventoryItem(id, updates)
       },
       removeInventoryItem,
       updateAsignados,
@@ -865,6 +949,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,
+      updateUserFilterPreferences,
       updateUserTheme,
       updateMarcas,
     }),
@@ -895,6 +980,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       addPendingTask,
       updatePendingTask,
       updateUserColumnPreferences,
+      updateUserFilterPreferences,
       updateUserTheme,
       updateMarcas,
     ],

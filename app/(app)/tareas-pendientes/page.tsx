@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Search, Filter, ArrowUpDown, Eye, CheckCircle, XCircle, Edit, Plus } from "lucide-react"
 import { useApp } from "@/contexts/app-context"
+import { InventoryItem } from "@/contexts/app-context"
 import { StatusBadge } from "@/components/status-badge"
 import { EditTaskSheet } from "@/components/edit-task-sheet"
 import { ConfirmationDialogForEditor } from "@/components/confirmation-dialog-for-editor"
@@ -43,18 +44,11 @@ interface PendingTask {
   auditLog?: { event: string; user: string; dateTime: string; description: string }[]
 }
 
-interface InventoryItem {
-  id: number
-  nombre: string
-  marca: string
-  modelo: string
-  categoria: string
-  descripcion?: string
-  estado: string // Cambiado de tipo enumerado a string para mayor flexibilidad
-  cantidad: number
-  numeroSerie: string | null
-  fechaIngreso: string
-  [key: string]: any // Para permitir propiedades adicionales como motivoRetiro
+// Tipo más flexible para InventoryItem en este contexto
+type FlexibleInventoryItem = Omit<InventoryItem, 'estado'> & {
+  estado: string;
+  fechaRetiro?: string;
+  [key: string]: any; // Para permitir propiedades adicionales
 }
 
 interface Assignment {

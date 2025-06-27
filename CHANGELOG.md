@@ -4,6 +4,37 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 
 ## [Unreleased]
 
+### Added
+- **Botones de Carga/Retiro Rápido**: Añadidos botones en la barra de herramientas de inventario para acceder rápidamente a estas funcionalidades críticas.
+- **Documentación de cambios**: Creado archivo `documentation/inventory_module_changes.md` para documentar las mejoras en el módulo de inventario.
+- **Sistema de Filtros Avanzados**: Implementación de filtros avanzados en el módulo de inventario, organizados en pestañas para mejorar la experiencia de usuario.
+- **Persistencia de Filtros**: Implementación de guardado de preferencias de filtros por usuario y sincronización con URL para compartir vistas filtradas.
+- **Optimización de Rendimiento**: Implementación de debounce para entradas numéricas y búsquedas para mejorar el rendimiento.
+- **Migración a Zustand**: Implementación completa de la migración desde Context API a Zustand, siguiendo los requisitos del SRS:
+  - Creación de múltiples stores especializados: `filter-store.ts`, `inventory-table-store.ts`, `modals-store.ts` y `product-selection-store.ts`
+  - Implementación de hooks personalizados como `use-debounced-store.ts`
+  - Adición de funciones auxiliares para ordenamiento y filtrado
+  - Documentación detallada del proceso en `documentation/zustand_migration.md`
+
+### Changed
+- **Consolidación de interfaces**: Exportada la interfaz `InventoryItem` desde el contexto para evitar duplicaciones y mantener la consistencia.
+- **Mejora de la función updateInventoryItemStatus**: Ampliada para soportar parámetros adicionales como `assignedTo` y `retireReason`.
+- **Tipo FlexibleInventoryItem**: Creado nuevo tipo para facilitar la actualización parcial de elementos del inventario.
+- **Simplificación de filtros técnicos**: Eliminados los filtros técnicos específicos por categoría para mantener una interfaz más limpia y consistente.
+- **Arquitectura de filtros**: Migrado el sistema de filtros de Context API a Zustand según lo especificado en el SRS, con mejoras de rendimiento y mantenibilidad.
+- **Mejora en Filtros**: Los filtros ahora están organizados en pestañas para una mejor organización visual.
+- **Optimización de Código**: Refactorización para eliminar código duplicado y mejorar mantenibilidad.
+- **Alineación con SRS**: Actualización de la arquitectura para cumplir con los requisitos del SRS respecto a la gestión de estado.
+
+### Fixed
+- **Inconsistencias en StatusBadge**: Corregida la visualización de estados en la interfaz para mantener consistencia con los valores de la base de datos.
+- **Validación de formularios**: Mejorada la validación para evitar entradas incorrectas en campos numéricos y fechas.
+- **Compatibilidad móvil**: Mejorada la experiencia en dispositivos móviles para los filtros avanzados con controles adaptados a pantallas pequeñas.
+- **Error de compilación en migración a Zustand**: Corregido error de declaración duplicada de variables de estado en el módulo de inventario al migrar de Context API a Zustand.
+- **Referencias a setters antiguos**: Actualizadas todas las referencias a los setters originales para usar los nuevos setters de Zustand.
+- **Errores de Compilación**: Corregidos errores de compilación relacionados con la migración a Zustand y declaraciones duplicadas de variables.
+- **Referencias Rotas**: Actualizadas todas las referencias a variables de estado para usar los nuevos stores de Zustand.
+
 ## [2.2.0] - 2025-01-26
 
 ### 🚀 FASE 1: SISTEMA DE DOCUMENTOS ADJUNTOS COMPLETADO ✅
@@ -177,7 +208,7 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 - **Conservación de funcionalidad** de apertura en nueva pestaña como opción adicional
 - **Metadatos completos** dentro del modal: subido por, fecha, tamaño, tipo
 
-### 🔧 **SISTEMA BASE IMPLEMENTADO ANTERIORMENTE**
+### **SISTEMA BASE IMPLEMENTADO ANTERIORMENTE**
 
 #### **📋 Sistema de Documentos Adjuntos (100% PRD)**
 - **Upload drag & drop** con validación en tiempo real
