@@ -13,21 +13,64 @@ export interface InventoryItem {
   estado: "Disponible" | "Asignado" | "Prestado" | "Retirado" | "En Mantenimiento" | "PENDIENTE_DE_RETIRO"
   cantidad: number
   numeroSerie: string | null
-  fechaIngreso: string // YYYY-MM-DD
+  fechaIngreso: string // ISO 8601 (YYYY-MM-DD)
+  
+  // Campo de ubicación mejorado (referencia más explícita)
   ubicacion?: string
+  ubicacionId?: number
+  
+  // Campos de información básica ampliados
   proveedor?: string | null
-  fechaAdquisicion?: string | null
+  fechaAdquisicion?: string | null // ISO 8601 (YYYY-MM-DD)
   contratoId?: string | null
   costo?: number
-  fechaCompra?: string
-  garantia?: string
+  
+  // Nuevos campos para criticidad (soporte para filtro equipos-criticos)
+  esCritico?: boolean
+  nivelCriticidad?: 'Bajo' | 'Medio' | 'Alto' | 'Crítico'
+  
+  // Campos de garantía mejorados (soporte para filtro proximos-vencer-garantia)
+  garantia?: string // ISO 8601 (YYYY-MM-DD)
+  garantiaInfo?: {
+    fechaInicio: string // ISO 8601 (YYYY-MM-DD)
+    fechaVencimiento: string // ISO 8601 (YYYY-MM-DD)
+    proveedor?: string
+    numeroPoliza?: string
+    documentoId?: string
+  }
+  
   vidaUtil?: string
-  mantenimiento?: string
-  historialMantenimiento?: { date: string; description: string }[]
-  documentosAdjuntos?: { name: string; url: string }[]
+  
+  // Campos de mantenimiento mejorados (soporte para filtro estadoMantenimiento)
+  mantenimiento?: "Requerido" | "Programado" | "Al Día" | "No Aplica"
+  historialMantenimiento?: {
+    id: number
+    fecha: string // ISO 8601 (YYYY-MM-DD)
+    tipo: 'Preventivo' | 'Correctivo' | 'Calibración'
+    proveedor: string
+    costo?: number
+    descripcion: string
+    estado: 'Programado' | 'En Proceso' | 'Completado' | 'Cancelado'
+    fechaFinalizacion?: string // ISO 8601 (YYYY-MM-DD)
+    realizadoPor: string
+    documentosId?: string[]
+  }[]
+  
+  // Documentos mejorados (soporte para filtro documentos)
+  documentosAdjuntos?: {
+    id: string
+    name: string
+    url: string
+    type?: string
+    size?: number
+    uploadDate?: string // ISO 8601 (YYYY-MM-DD)
+    deletedAt?: string | null // Para implementación de papelera
+    uploadedBy?: number // ID del usuario
+  }[]
+  
   motivoRetiro?: string
   asignadoA?: string | null
-  fechaAsignacion?: string | null
+  fechaAsignacion?: string | null // ISO 8601 (YYYY-MM-DD)
 }
 
 interface AsignadoItem {

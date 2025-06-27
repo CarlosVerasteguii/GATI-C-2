@@ -37,6 +37,33 @@ Se ha creado documentación detallada para facilitar el mantenimiento y desarrol
 - **`filter_state_implementation.md`**: Detalla la implementación del sistema de filtros
 - **Actualización del CHANGELOG**: Registro de todos los cambios realizados
 
+## Auditoría y Mejoras del Sistema de Filtros
+
+Como parte del proceso de alineación con los requisitos establecidos en el PRD y SRS, se realizó una auditoría extensiva del sistema de filtros en el módulo de inventario. Se identificaron inconsistencias entre los filtros implementados en la UI y su soporte en el modelo de datos subyacente.
+
+### Fase 1.1: Alineación del Modelo de Datos con Filtros
+
+En la Fase 1.1 se implementaron las siguientes mejoras:
+
+- **Modelo de datos mejorado**: Se actualizó la interfaz `InventoryItem` para soportar todos los filtros disponibles
+- **Campos de criticidad**: Implementación de `esCritico` y `nivelCriticidad` para filtros de equipos críticos
+- **Estructura de garantía**: Mejora en el manejo de información de garantía para soportar filtros por vencimiento
+- **Historial de mantenimiento estructurado**: Soporte completo para filtros por estado de mantenimiento
+- **Documentos con metadatos**: Implementación mejorada para filtros relacionados con documentos adjuntos
+
+La implementación incluye soporte para retrocompatibilidad con datos existentes y validación de formatos para garantizar la consistencia en el sistema.
+
+Documentación detallada disponible en:
+- [Fase 1.1: Implementación](./fase_1_1_implementacion.md)
+- [Matriz de Estado de Filtros](./fase_1_1_matriz_filtros.md)
+
+### Próximas Fases
+
+Las siguientes fases del plan de mejora se enfocarán en:
+1. Actualización de datos de ejemplo y migración de datos existentes
+2. Implementación completa de los formularios de creación/edición para todos los campos
+3. Mejora en la visualización y gestión del historial de mantenimiento
+
 ## Próximos Pasos
 
 Para completar la transición total a Zustand y optimizar aún más la aplicación, recomendamos:

@@ -30,7 +30,7 @@ interface EditProductModalProps {
 }
 
 export function EditProductModal({ open, onOpenChange, product, onSuccess }: EditProductModalProps) {
-  const { state, addPendingTask, addRecentActivity } = useApp()
+  const { state, addPendingTask, addRecentActivity, addPendingRequest } = useApp()
   const [isLoading, setIsLoading] = useState(false)
   const [hasSerialNumber, setHasSerialNumber] = useState(product?.numeroSerie !== null)
   const [activeTab, setActiveTab] = useState<"basic" | "details" | "documents">("basic")
@@ -50,10 +50,25 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
     quantity: product?.cantidad?.toString() || "1",
     serialNumber: product?.numeroSerie || "",
     costo: product?.costo?.toString() || "",
+    
+    // Campos nuevos para garantía
     garantia: product?.garantia || "",
+    garantiaFechaInicio: product?.garantiaInfo?.fechaInicio || "",
+    garantiaFechaVencimiento: product?.garantiaInfo?.fechaVencimiento || product?.garantia || "",
+    garantiaProveedor: product?.garantiaInfo?.proveedor || product?.proveedor || "",
+    garantiaNumeroPoliza: product?.garantiaInfo?.numeroPoliza || "",
+    
     vidaUtil: product?.vidaUtil || "",
+    
+    // Campos para criticidad
+    esCritico: product?.esCritico || false,
+    nivelCriticidad: product?.nivelCriticidad || "Bajo",
+    
+    // Campos para mantenimiento
+    mantenimiento: product?.mantenimiento || "No Aplica",
+    ubicacion: product?.ubicacion || "",
+    ubicacionId: product?.ubicacionId?.toString() || "",
   })
-
 
   // Documentos adjuntos (simulados)
   const [attachedDocuments, setAttachedDocuments] = useState<{ id: string, name: string, url: string, uploadDate: string }[]>(
@@ -80,18 +95,34 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
         quantity: product.cantidad?.toString() || "1",
         serialNumber: product.numeroSerie || "",
         costo: product.costo?.toString() || "",
+        
+        // Campos nuevos para garantía
         garantia: product.garantia || "",
+        garantiaFechaInicio: product.garantiaInfo?.fechaInicio || "",
+        garantiaFechaVencimiento: product.garantiaInfo?.fechaVencimiento || product.garantia || "",
+        garantiaProveedor: product.garantiaInfo?.proveedor || product.proveedor || "",
+        garantiaNumeroPoliza: product.garantiaInfo?.numeroPoliza || "",
+        
         vidaUtil: product.vidaUtil || "",
+        
+        // Campos para criticidad
+        esCritico: product.esCritico || false,
+        nivelCriticidad: product.nivelCriticidad || "Bajo",
+        
+        // Campos para mantenimiento
+        mantenimiento: product.mantenimiento || "No Aplica",
+        ubicacion: product.ubicacion || "",
+        ubicacionId: product.ubicacionId?.toString() || "",
       })
       setHasSerialNumber(product.numeroSerie !== null)
 
       // Actualizar documentos adjuntos
       setAttachedDocuments(
         product?.documentosAdjuntos?.map((doc: any, index: number) => ({
-          id: `doc-${index}`,
+          id: doc.id || `doc-${index}`,
           name: doc.name,
           url: doc.url,
-          uploadDate: new Date().toISOString().split('T')[0]
+          uploadDate: doc.uploadDate || new Date().toISOString().split('T')[0]
         })) || []
       )
     }
@@ -179,6 +210,39 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
 
     setIsLoading(true)
 
+    // Validar los formatos de fecha
+    const fechasAValidar = [
+      { campo: "fechaAdquisicion", valor: formData.fechaAdquisicion, nombre: "Fecha de Adquisición" },
+      { campo: "garantiaFechaInicio", valor: formData.garantiaFechaInicio, nombre: "Fecha Inicio Garantía" },
+      { campo: "garantiaFechaVencimiento", valor: formData.garantiaFechaVencimiento, nombre: "Fecha Vencimiento Garantía" }
+    ];
+    
+    for (const { campo, valor, nombre } of fechasAValidar) {
+      if (valor && !isValidDate(valor)) {
+        showError({
+          title: "Formato de fecha inválido",
+          description: `El campo "${nombre}" debe tener un formato de fecha válido (YYYY-MM-DD).`
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    // Verificar que la fecha de vencimiento de garantía sea posterior a la fecha de inicio
+    if (formData.garantiaFechaInicio && formData.garantiaFechaVencimiento) {
+      const inicioDate = new Date(formData.garantiaFechaInicio);
+      const vencimientoDate = new Date(formData.garantiaFechaVencimiento);
+      
+      if (vencimientoDate <= inicioDate) {
+        showError({
+          title: "Error en fechas de garantía",
+          description: "La fecha de vencimiento de garantía debe ser posterior a la fecha de inicio."
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
     // Prepare updates based on whether it's serialized or not
     const updates = {
       nombre: formData.productName,
@@ -187,61 +251,112 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
       categoria: formData.category,
       descripcion: formData.description,
       proveedor: formData.proveedor,
-      fechaAdquisicion: formData.fechaAdquisicion,
-      contratoId: formData.contratoId,
+      fechaAdquisicion: formData.fechaAdquisicion || undefined,
+      contratoId: formData.contratoId || undefined,
       // Only update quantity/serial if the type (serialized/non-serialized) matches the original
       // Or if the user explicitly changes the serial number toggle and provides valid input
-      cantidad: hasSerialNumber ? 1 : Number.parseInt(formData.quantity),
+      cantidad: hasSerialNumber ? 1 : Number.parseInt(formData.quantity) || 0,
       numeroSerie: hasSerialNumber ? formData.serialNumber : null,
       costo: formData.costo ? parseFloat(formData.costo) : undefined,
-      garantia: formData.garantia || undefined,
+      
+      // Información de garantía
+      garantia: formData.garantiaFechaVencimiento || formData.garantia || undefined, // Para retrocompatibilidad
+      garantiaInfo: {
+        fechaInicio: formData.garantiaFechaInicio || undefined,
+        fechaVencimiento: formData.garantiaFechaVencimiento || formData.garantia || undefined,
+        proveedor: formData.garantiaProveedor || undefined,
+        numeroPoliza: formData.garantiaNumeroPoliza || undefined,
+      },
+      
       vidaUtil: formData.vidaUtil || undefined,
+      
+      // Información de criticidad
+      esCritico: formData.esCritico === "true" || formData.esCritico === true || false,
+      nivelCriticidad: formData.nivelCriticidad || "Bajo",
+      
+      // Información de mantenimiento
+      mantenimiento: formData.mantenimiento || "No Aplica",
+      ubicacion: formData.ubicacion || undefined,
+      ubicacionId: formData.ubicacionId ? Number(formData.ubicacionId) : undefined,
+      
       documentosAdjuntos: attachedDocuments.map(doc => ({
+        id: doc.id,
         name: doc.name,
-        url: doc.url
-      }))
+        url: doc.url,
+        uploadDate: doc.uploadDate,
+        type: doc.name.split('.').pop() || '',
+        size: 0, // No tenemos esta información en la simulación
+      })),
     }
 
-    // Simulate task creation for editing
-    setTimeout(() => {
-      addPendingTask({
-        id: Math.floor(Math.random() * 10000), // Añadir ID requerido
-        type: "Edición de Producto",
-        creationDate: new Date().toISOString(),
-        createdBy: state.user?.nombre || "Usuario Rápido",
-        status: "Pendiente",
-        details: {
-          originalProductId: product.id, // Keep track of the original product ID
-          updates: updates,
-        },
-        auditLog: [
-          {
-            event: "CREACIÓN",
-            user: state.user?.nombre || "Usuario Rápido",
-            dateTime: new Date().toISOString(),
-            description: `Solicitud de edición para el producto ${product.nombre} (ID: ${product.id}) creada.`,
-          },
-        ],
+    try {
+      // Si es un Lector, crear una solicitud de cambio
+      if (state.user?.rol === "Lector") {
+        // Crear una solicitud pendiente de aprobación
+        const request = {
+          id: Date.now(),
+          type: "Edición de Producto",
+          requestedBy: state.user.nombre,
+          date: new Date().toISOString().split('T')[0],
+          status: "Pendiente",
+          details: {
+            productId: product.id,
+            productName: product.nombre,
+            originalData: { ...product },
+            updatedData: updates
+          }
+        }
+
+        addPendingRequest(request)
+
+        showSuccess({
+          title: "Solicitud enviada",
+          description: "Tu solicitud de edición ha sido enviada para aprobación."
+        })
+
+        onOpenChange(false)
+        onSuccess()
+      } else {
+        // Si es Admin o Editor, aplicar cambios directamente
+        // Simulate API call / processing
+        setTimeout(() => {
+          // Add activity record
+          addRecentActivity({
+            type: "Edición de Producto",
+            description: `${state.user?.nombre || "Usuario"} editó el producto "${updates.nombre}"`,
+            date: new Date().toISOString()
+          })
+
+          showSuccess({
+            title: "Producto actualizado",
+            description: "Los cambios han sido guardados exitosamente."
+          })
+
+          onOpenChange(false)
+          onSuccess()
+        }, 1000)
+      }
+    } catch (error) {
+      showError({
+        title: "Error",
+        description: "Ocurrió un error al guardar los cambios."
       })
-      showSuccess({
-        title: "Solicitud de Edición Enviada",
-        description: "Tu solicitud de edición ha sido enviada para aprobación y procesamiento."
-      })
-      addRecentActivity({
-        type: "Creación de Tarea",
-        description: `Tarea de edición para ${product.nombre} creada por ${state.user?.nombre || "Usuario Rápido"}`,
-        date: new Date().toLocaleString(),
-        details: {
-          productId: product.id,
-          productName: product.nombre,
-          updates: updates,
-          createdBy: state.user?.nombre || "Usuario Rápido",
-        },
-      })
+    } finally {
       setIsLoading(false)
-      onOpenChange(false)
-      onSuccess() // Notify parent component of success
-    }, 1000)
+    }
+  }
+  
+  // Función auxiliar para validar formato de fecha ISO 8601 (YYYY-MM-DD)
+  const isValidDate = (dateString: string): boolean => {
+    if (!dateString) return true; // Campo vacío es válido
+    
+    // Verificar formato YYYY-MM-DD
+    const regex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!regex.test(dateString)) return false;
+    
+    // Verificar que sea una fecha válida
+    const date = new Date(dateString);
+    return !isNaN(date.getTime());
   }
 
   if (!product) return null
@@ -371,11 +486,12 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
 
             {/* Pestaña: Detalles Técnicos */}
             <TabsContent value="details" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="proveedor">Proveedor</Label>
                   <Input
                     id="proveedor"
+                    placeholder="Nombre del proveedor"
                     value={formData.proveedor}
                     onChange={(e) => handleInputChange("proveedor", e.target.value)}
                   />
@@ -385,14 +501,16 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
                   <Input
                     id="fechaAdquisicion"
                     type="date"
+                    placeholder="YYYY-MM-DD"
                     value={formData.fechaAdquisicion}
                     onChange={(e) => handleInputChange("fechaAdquisicion", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contratoId">SICE / Contrato ID</Label>
+                  <Label htmlFor="contratoId">Número de Contrato</Label>
                   <Input
                     id="contratoId"
+                    placeholder="Identificador del contrato"
                     value={formData.contratoId}
                     onChange={(e) => handleInputChange("contratoId", e.target.value)}
                   />
@@ -402,26 +520,149 @@ export function EditProductModal({ open, onOpenChange, product, onSuccess }: Edi
                   <Input
                     id="costo"
                     type="number"
+                    min="0"
                     step="0.01"
-                    placeholder="0.00"
+                    placeholder="Valor en pesos"
                     value={formData.costo}
                     onChange={(e) => handleInputChange("costo", e.target.value)}
                   />
                 </div>
+                
+                {/* Información de Garantía */}
+                <div className="col-span-2">
+                  <div className="mb-2 border-t pt-4">
+                    <h3 className="font-medium">Información de Garantía</h3>
+                  </div>
+                </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="garantia">Garantía (hasta)</Label>
+                  <Label htmlFor="garantiaFechaInicio">Fecha Inicio Garantía</Label>
                   <Input
-                    id="garantia"
+                    id="garantiaFechaInicio"
                     type="date"
-                    value={formData.garantia}
-                    onChange={(e) => handleInputChange("garantia", e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    value={formData.garantiaFechaInicio}
+                    onChange={(e) => handleInputChange("garantiaFechaInicio", e.target.value)}
                   />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="vidaUtil">Vida Útil (hasta)</Label>
+                  <Label htmlFor="garantiaFechaVencimiento">Fecha Vencimiento Garantía</Label>
+                  <Input
+                    id="garantiaFechaVencimiento"
+                    type="date"
+                    placeholder="YYYY-MM-DD"
+                    value={formData.garantiaFechaVencimiento}
+                    onChange={(e) => handleInputChange("garantiaFechaVencimiento", e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="garantiaProveedor">Proveedor de Garantía</Label>
+                  <Input
+                    id="garantiaProveedor"
+                    placeholder="Proveedor que otorga la garantía"
+                    value={formData.garantiaProveedor}
+                    onChange={(e) => handleInputChange("garantiaProveedor", e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="garantiaNumeroPoliza">Número de Póliza</Label>
+                  <Input
+                    id="garantiaNumeroPoliza"
+                    placeholder="Número de póliza o identificador"
+                    value={formData.garantiaNumeroPoliza}
+                    onChange={(e) => handleInputChange("garantiaNumeroPoliza", e.target.value)}
+                  />
+                </div>
+                
+                {/* Información de Criticidad */}
+                <div className="col-span-2">
+                  <div className="mb-2 border-t pt-4">
+                    <h3 className="font-medium">Criticidad del Equipo</h3>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="esCritico"
+                    checked={formData.esCritico}
+                    onCheckedChange={(checked) => handleInputChange("esCritico", checked.toString())}
+                  />
+                  <Label htmlFor="esCritico">Equipo Crítico</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <HelpCircle className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-xs">Marque esta opción si el equipo es considerado crítico para la operación.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="nivelCriticidad">Nivel de Criticidad</Label>
+                  <Select 
+                    value={formData.nivelCriticidad} 
+                    onValueChange={(value) => handleInputChange("nivelCriticidad", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar nivel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bajo">Bajo</SelectItem>
+                      <SelectItem value="Medio">Medio</SelectItem>
+                      <SelectItem value="Alto">Alto</SelectItem>
+                      <SelectItem value="Crítico">Crítico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Información de Mantenimiento */}
+                <div className="col-span-2">
+                  <div className="mb-2 border-t pt-4">
+                    <h3 className="font-medium">Estado de Mantenimiento</h3>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="mantenimiento">Estado de Mantenimiento</Label>
+                  <Select 
+                    value={formData.mantenimiento} 
+                    onValueChange={(value) => handleInputChange("mantenimiento", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Requerido">Requiere Mantenimiento</SelectItem>
+                      <SelectItem value="Programado">Mantenimiento Programado</SelectItem>
+                      <SelectItem value="Al Día">Al Día</SelectItem>
+                      <SelectItem value="No Aplica">No Aplica</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="ubicacion">Ubicación</Label>
+                  <Input
+                    id="ubicacion"
+                    placeholder="Ubicación física del equipo"
+                    value={formData.ubicacion}
+                    onChange={(e) => handleInputChange("ubicacion", e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="vidaUtil">Vida Útil Estimada</Label>
                   <Input
                     id="vidaUtil"
-                    type="date"
+                    placeholder="Vida útil estimada (ej. 5 años)"
                     value={formData.vidaUtil}
                     onChange={(e) => handleInputChange("vidaUtil", e.target.value)}
                   />

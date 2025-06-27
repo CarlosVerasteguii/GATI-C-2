@@ -282,4 +282,27 @@ Todas las modificaciones significativas del proyecto deben ser documentadas aqu�
 
 **Estado del Sistema**: ✅ **PRODUCTION-READY**  
 **Certificado para CFE**: ✅ **APROBADO ENTERPRISE-GRADE**  
-**Documentación**: ✅ **COMPLETA Y ACTUALIZADA** 
+**Documentación**: ✅ **COMPLETA Y ACTUALIZADA**
+
+## [Próxima Versión]
+
+### Fase 1.1: Mejoras en el Modelo de Datos para Filtros (2023-09-XX)
+
+#### Añadido
+- Campos de criticidad (`esCritico`, `nivelCriticidad`) en el modelo `InventoryItem`
+- Estructura mejorada para información de garantía (`garantiaInfo`)
+- Estructura detallada para historial de mantenimiento
+- Campos de metadatos para documentos adjuntos
+- Validación de formatos de fecha ISO 8601
+- Nuevas funciones de utilidad para manejo de fechas
+
+#### Modificado
+- Actualizada la interfaz `InventoryItem` para soportar completamente los filtros existentes
+- Mejorada la función `applyAdvancedFilters` con manejo de errores y compatibilidad
+- Actualizado el formulario de edición de productos con los nuevos campos
+- Estandarización de formatos de fecha a ISO 8601
+
+#### Documentación
+- Añadido documento `fase_1_1_implementacion.md` con detalles de los cambios
+- Añadido documento `fase_1_1_matriz_filtros.md` con matriz de estado de filtros
+- Actualizado `implementation_summary.md` con información de la Fase 1.1 

@@ -310,23 +310,35 @@ export default function InventarioPage() {
 
     // Filtrar por fechaAdquisicion
     if (advancedFilters.fechaDesde) {
-      filtered = filtered.filter(item =>
-        item.fechaAdquisicion &&
-        new Date(item.fechaAdquisicion) >= advancedFilters.fechaDesde!
-      )
+      filtered = filtered.filter(item => {
+        if (!item.fechaAdquisicion) return false
+        try {
+          return new Date(item.fechaAdquisicion) >= advancedFilters.fechaDesde!
+        } catch (error) {
+          console.error("Error comparing fechaAdquisicion:", error)
+          return false
+        }
+      })
     }
 
     if (advancedFilters.fechaHasta) {
-      filtered = filtered.filter(item =>
-        item.fechaAdquisicion &&
-        new Date(item.fechaAdquisicion) <= advancedFilters.fechaHasta!
-      )
+      filtered = filtered.filter(item => {
+        if (!item.fechaAdquisicion) return false
+        try {
+          return new Date(item.fechaAdquisicion) <= advancedFilters.fechaHasta!
+        } catch (error) {
+          console.error("Error comparing fechaAdquisicion:", error)
+          return false
+        }
+      })
     }
 
     // Filtrar por documentos adjuntos
     if (advancedFilters.documentos !== null) {
       filtered = filtered.filter(item => {
-        const hasDocuments = item.documentosAdjuntos && item.documentosAdjuntos.length > 0
+        const hasDocuments = item.documentosAdjuntos && 
+                            item.documentosAdjuntos.length > 0 && 
+                            item.documentosAdjuntos.some(doc => !doc.deletedAt) // No considerar los documentos borrados
         return advancedFilters.documentos ? hasDocuments : !hasDocuments
       })
     }
@@ -340,28 +352,58 @@ export default function InventarioPage() {
         return advancedFilters.estadosEspeciales.some(state => {
           switch (state) {
             case 'equipos-criticos':
-              // Ejemplo: consideramos críticos los equipos con costo > 5000
-              return item.costo && item.costo > 5000
+              // Usar el campo esCritico si existe, sino fallback al criterio de costo
+              if (item.esCritico !== undefined) {
+                return item.esCritico === true
+              }
+              // Criterio fallback: consideramos críticos los equipos con costo > 5000
+              return item.costo !== undefined && item.costo > 5000
 
             case 'proximos-vencer-garantia':
+              // Usar garantiaInfo si está disponible
+              if (item.garantiaInfo?.fechaVencimiento) {
+                try {
+                  const garantiaDate = new Date(item.garantiaInfo.fechaVencimiento)
+                  const diffTime = garantiaDate.getTime() - today.getTime()
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                  return diffDays > 0 && diffDays <= 30
+                } catch (error) {
+                  console.error("Error processing garantiaInfo:", error)
+                  return false
+                }
+              }
+              
+              // Fallback al campo garantia simple
               if (!item.garantia) return false
 
-              // Convertir garantía a fecha (formato esperado: YYYY-MM-DD)
-              const garantiaDate = new Date(item.garantia)
-              const diffTime = garantiaDate.getTime() - today.getTime()
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-              return diffDays > 0 && diffDays <= 30
+              try {
+                // Convertir garantía a fecha (formato esperado: YYYY-MM-DD)
+                const garantiaDate = new Date(item.garantia)
+                const diffTime = garantiaDate.getTime() - today.getTime()
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                return diffDays > 0 && diffDays <= 30
+              } catch (error) {
+                console.error("Error processing garantia:", error)
+                return false
+              }
 
             case 'sin-documentos':
-              return !item.documentosAdjuntos || item.documentosAdjuntos.length === 0
+              return !item.documentosAdjuntos || 
+                    item.documentosAdjuntos.length === 0 || 
+                    item.documentosAdjuntos.every(doc => doc.deletedAt) // Todos los documentos están borrados
 
             case 'adquisicion-reciente':
               if (!item.fechaAdquisicion) return false
 
-              const adquisicionDate = new Date(item.fechaAdquisicion)
-              const diffTimeAdq = today.getTime() - adquisicionDate.getTime()
-              const diffDaysAdq = Math.ceil(diffTimeAdq / (1000 * 60 * 60 * 24))
-              return diffDaysAdq <= 30
+              try {
+                const adquisicionDate = new Date(item.fechaAdquisicion)
+                const diffTimeAdq = today.getTime() - adquisicionDate.getTime()
+                const diffDaysAdq = Math.ceil(diffTimeAdq / (1000 * 60 * 60 * 24))
+                return diffDaysAdq <= 30
+              } catch (error) {
+                console.error("Error processing fechaAdquisicion:", error)
+                return false
+              }
 
             default:
               return false
@@ -382,9 +424,15 @@ export default function InventarioPage() {
 
     // FASE 2: Filtrar por ubicación
     if (advancedFilters.ubicaciones.length > 0) {
-      filtered = filtered.filter(item =>
-        item.ubicacion && advancedFilters.ubicaciones.includes(item.ubicacion)
-      )
+      filtered = filtered.filter(item => {
+        // Primero intentar con ubicacionId si existe
+        if (item.ubicacionId !== undefined) {
+          // Si ubicacionId es numérico, convertir los valores del filtro a números
+          return advancedFilters.ubicaciones.some(ub => Number(ub) === item.ubicacionId)
+        }
+        // Fallback al campo ubicacion como string
+        return item.ubicacion && advancedFilters.ubicaciones.includes(item.ubicacion)
+      })
     }
 
     // FASE 2: Filtrar por estado de mantenimiento
@@ -393,24 +441,43 @@ export default function InventarioPage() {
 
       switch (advancedFilters.estadoMantenimiento) {
         case 'requiere':
-          // Criterio: última fecha de mantenimiento > 180 días o sin registro
+          // Usar campo mantenimiento si está disponible
+          if (item.mantenimiento === "Requerido") return true;
+          
+          // Criterio alternativo: última fecha de mantenimiento > 180 días o sin registro
           filtered = filtered.filter(item => {
             if (!item.historialMantenimiento || item.historialMantenimiento.length === 0) return true
 
-            // Ordenar historial por fecha más reciente
-            const sortedHistory = [...item.historialMantenimiento].sort((a, b) =>
-              new Date(b.date).getTime() - new Date(a.date).getTime()
-            )
+            try {
+              // Ordenar historial por fecha más reciente
+              const sortedHistory = [...item.historialMantenimiento].sort((a, b) => {
+                const fechaA = a.fecha || a.date // Compatibilidad con vieja estructura
+                const fechaB = b.fecha || b.date // Compatibilidad con vieja estructura
+                return new Date(fechaB).getTime() - new Date(fechaA).getTime()
+              })
 
-            const lastMaintDate = new Date(sortedHistory[0].date)
-            const diffDays = Math.ceil((today.getTime() - lastMaintDate.getTime()) / (1000 * 60 * 60 * 24))
-            return diffDays > 180
+              const lastMaintDate = new Date(sortedHistory[0].fecha || sortedHistory[0].date)
+              const diffDays = Math.ceil((today.getTime() - lastMaintDate.getTime()) / (1000 * 60 * 60 * 24))
+              return diffDays > 180
+            } catch (error) {
+              console.error("Error processing historialMantenimiento:", error)
+              return false
+            }
           })
           break
 
         case 'programado':
           // Filtra equipos con mantenimiento programado (estado específico)
-          filtered = filtered.filter(item => item.mantenimiento === "programado")
+          filtered = filtered.filter(item => {
+            // Usar campo mantenimiento si está disponible
+            if (item.mantenimiento === "Programado") return true;
+            
+            // Buscar en historial si hay mantenimientos programados
+            return item.historialMantenimiento?.some(m => 
+              m.estado === 'Programado' || 
+              (m.estado === 'En Proceso')
+            ) || false;
+          })
           break
 
         case 'reciente':
@@ -418,13 +485,22 @@ export default function InventarioPage() {
           filtered = filtered.filter(item => {
             if (!item.historialMantenimiento || item.historialMantenimiento.length === 0) return false
 
-            const sortedHistory = [...item.historialMantenimiento].sort((a, b) =>
-              new Date(b.date).getTime() - new Date(a.date).getTime()
-            )
+            try {
+              // Ordenar historial por fecha más reciente
+              const sortedHistory = [...item.historialMantenimiento].sort((a, b) => {
+                const fechaA = a.fecha || a.date // Compatibilidad con vieja estructura
+                const fechaB = b.fecha || b.date // Compatibilidad con vieja estructura
+                return new Date(fechaB).getTime() - new Date(fechaA).getTime()
+              })
 
-            const lastMaintDate = new Date(sortedHistory[0].date)
-            const diffDays = Math.ceil((today.getTime() - lastMaintDate.getTime()) / (1000 * 60 * 60 * 24))
-            return diffDays <= 60
+              const lastMaintFecha = sortedHistory[0].fecha || sortedHistory[0].date
+              const lastMaintDate = new Date(lastMaintFecha)
+              const diffDays = Math.ceil((today.getTime() - lastMaintDate.getTime()) / (1000 * 60 * 60 * 24))
+              return diffDays <= 60
+            } catch (error) {
+              console.error("Error processing historialMantenimiento:", error)
+              return false
+            }
           })
           break
       }

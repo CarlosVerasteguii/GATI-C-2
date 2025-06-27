@@ -6,6 +6,51 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Verifica si una fecha está en formato ISO 8601 (YYYY-MM-DD)
+ * 
+ * @param dateString La cadena de fecha a validar
+ * @returns true si la fecha es válida y está en formato correcto
+ */
+export function isValidISODate(dateString: string): boolean {
+  if (!dateString) return false
+  
+  // Verificar formato YYYY-MM-DD
+  const regex = /^\d{4}-\d{2}-\d{2}$/
+  if (!regex.test(dateString)) return false
+  
+  // Verificar que sea una fecha válida
+  const date = new Date(dateString)
+  const timestamp = date.getTime()
+  if (isNaN(timestamp)) return false
+  
+  // Asegurarse de que la fecha sea consistente (evitar fechas como 2023-02-31)
+  return date.toISOString().slice(0, 10) === dateString
+}
+
+/**
+ * Convierte una fecha a formato ISO 8601 (YYYY-MM-DD)
+ * 
+ * @param date Fecha a convertir
+ * @returns Fecha en formato ISO 8601 o null si la entrada es inválida
+ */
+export function toISODateString(date: Date | string | null | undefined): string | null {
+  if (!date) return null
+  
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date
+    const year = dateObj.getFullYear()
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const day = String(dateObj.getDate()).padStart(2, '0')
+    
+    const isoString = `${year}-${month}-${day}`
+    return isValidISODate(isoString) ? isoString : null
+  } catch (error) {
+    console.error("Error converting date to ISO format:", error)
+    return null
+  }
+}
+
+/**
  * Creates a debounced function that delays invoking the provided function
  * until after the specified wait time has elapsed since the last time it was invoked.
  * 
@@ -92,7 +137,11 @@ export function serializeFilters(filters: Record<string, any>): Record<string, s
     }
     // Handle Date objects
     else if (value instanceof Date) {
-      result[key] = value.toISOString().split('T')[0] // YYYY-MM-DD format
+      // Usar ISO 8601 (YYYY-MM-DD) para fechas
+      const isoDate = toISODateString(value)
+      if (isoDate) {
+        result[key] = isoDate
+      }
     }
     // Handle boolean values
     else if (typeof value === 'boolean') {
@@ -137,9 +186,13 @@ export function deserializeFilters(
       result[key] = value ? value.split(',') : []
     }
     else if (config.type === 'date') {
-      // Handle date values
+      // Handle date values with proper validation
       const value = params.get(key)
-      result[key] = value ? new Date(value) : null
+      if (value && isValidISODate(value)) {
+        result[key] = new Date(value)
+      } else {
+        result[key] = null
+      }
     }
     else if (config.type === 'boolean') {
       // Handle boolean values
